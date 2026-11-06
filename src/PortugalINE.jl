@@ -14,10 +14,19 @@ module PortugalINE
 include("Codes.jl")
 using .Codes
 
+include("Indicators.jl")
+using .Indicators
+
 include("Boundaries.jl")
 using .Boundaries
 
-export Codes, Boundaries
+export Codes, Indicators, Boundaries
+export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
+       CatalogueEntry,
+       indicator_metadata, indicator_data, catalogue, catalogue_entry,
+       municipal_values, period_code, periods, ismunicipal, search_catalogue,
+       ine_cache_dir, clear_ine_cache!, cache_response!, ine_citation,
+       parse_value
 export MunicipalBoundaries, CAOP_ATTRIBUTION,
        read_caop_geojson, contiguity, neighbour_lists, centroids,
        knn_contiguity, write_gal

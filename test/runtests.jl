@@ -91,6 +91,10 @@ end
 end
 
 
+@testset "2. the indicator API" begin
+    include("test_indicators.jl")
+end
+
 @testset "3. boundaries and weights" begin
     include("test_boundaries.jl")
 end

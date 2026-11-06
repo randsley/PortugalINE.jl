@@ -1,0 +1,45 @@
+
+
+
+
+
+
+
+
+
+
+
+  <catalog>
+  <extraction_date><![CDATA[Friday, 06 November 2026, 11:14:21.615 PM]]></extraction_date>
+  <language>EN</language>    
+  
+  <indicator id="0014580">
+  
+        	 <theme><![CDATA[Living conditions and citizenship]]></theme>
+             <subtheme><![CDATA[Poverty and economic inequality]]></subtheme>    	 
+        	
+  <keywords>INE,<![CDATA[Per]]>,<![CDATA[purchasing]]>,<![CDATA[power]]>,<![CDATA[Living conditions and citizenship]]>,<![CDATA[Poverty and economic inequality]]></keywords>
+  <title><![CDATA[Per capita purchasing power]]></title>
+  <varcd><![CDATA[0014580]]></varcd>
+  <description><![CDATA[Per capita purchasing power by Geographic localization (NUTS - 2024); Biennial - Statistics Portugal, Study on the local purchasing power]]></description>
+  <geo_lastlevel><![CDATA[Município]]></geo_lastlevel>
+  <source><![CDATA[Statistics Portugal, Study on the local purchasing power]]></source>
+  <dates>
+		<last_period_available><![CDATA[S7A2023]]></last_period_available>
+		<last_update><![CDATA[06-11-2025]]></last_update>		
+  </dates>      
+  <periodicity><![CDATA[ Biennial]]></periodicity>
+  
+ 			<update_type>D</update_type>  
+ 
+  <html>
+        <bdd_url><![CDATA[https://www.ine.pt/xurl/indx/0014580]]></bdd_url>
+        <metainfo_url><![CDATA[https://www.ine.pt/xurl/metax/0014580]]></metainfo_url>	
+  </html>
+  <json>
+        <json_dataset><![CDATA[ https://www.ine.pt/ine/json_indicador/pindica.jsp?op=2&varcd=0014580&lang=EN]]></json_dataset>
+        <json_metainfo><![CDATA[ https://www.ine.pt/ine/json_indicador/pindicaMeta.jsp?varcd=0014580&lang=EN]]></json_metainfo>    
+  </json>  
+</indicator>
+       
+</catalog>

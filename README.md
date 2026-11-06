@@ -4,11 +4,12 @@ A Julia client for **Statistics Portugal (INE)**, built for spatial work: the
 geography codes, the indicator API, and weights matrices from INE's own
 geometry.
 
-> **Status: 0.1.0-DEV.** Layers 1 (geography codes) and 3 (boundaries and
-> weights) are implemented and tested. Layer 2, the indicator API, is not
-> written yet -- until it is, pull attributes with
-> [`pyptine`](https://github.com/randsley/pyptine) and see
-> `scripts/build_spatial_dataset.py`.
+> **Status: 0.1.0-DEV.** Layers 1 (geography codes), 2 (the indicator API) and
+> 3 (boundaries and weights) are implemented and tested. Layer 4, the join, is
+> not written yet; until it is, `municipal_values` plus a sort on DICO does it
+> in two lines. `scripts/build_spatial_dataset.py` remains as the
+> [`pyptine`](https://github.com/randsley/pyptine) route that produced the
+> first extract.
 
 ## Why this exists
 
@@ -23,7 +24,7 @@ half plus enough of the API to join to it.
 | layer | what | status |
 |---|---|---|
 | 1. Codes | the geography code hierarchy, DICO parsing, mainland/island | done |
-| 2. API | catalogue (`xml_indic.jsp`), indicators (`pindica.jsp`), disk cache | planned |
+| 2. API | catalogue (`xml_indic.jsp`), indicators (`pindica.jsp`), disk cache | done |
 | 3. Geometry | CAOP reader, `W` by queen/rook contiguity and k-nearest, GAL output | done |
 | 4. Join | indicators to geometry on DICO, island handling made explicit | planned |
 
@@ -79,6 +80,57 @@ island rows are entirely zero, and row-standardising divides by zero. Choose
 mainland-only or a neighbour-count weighting deliberately; `ismainland` is there
 so the choice is visible in the code.
 
+## What layer 2 knows
+
+```julia
+using PortugalINE
+
+cat = catalogue()                        # 326 indicators, one 500 kB request
+count(ismunicipal, cat)                  # 115 reach municipal level or finer
+search_catalogue(cat, "poder de compra"; municipal_only = true)
+
+ind = indicator_metadata("0014580")      # dimensions, and every code they take
+d   = indicator_data("0014580"; period = "2023")
+m   = municipal_values(d)                # 308 rows, keyed and sorted by DICO
+ine_citation(d)                           # the citation INE's terms require
+```
+
+`d.table` is a `NamedTuple` of equal-length vectors, which is already a valid
+Tables.jl column table, so `DataFrame(d.table)` works without this package
+depending on DataFrames or Tables. Responses are cached on disk by URL;
+`cache_response!` seeds that cache from an archived body, which is how an
+extract gets frozen so a published number can be regenerated without the API.
+
+### Four things this API does that will catch you
+
+**`valor` is a string, and it is not the one that is displayed.** A row reads
+`{"geocod":"3003106","geodsg":"Porto Moniz","ind_string":"61,78","valor":"61.78"}`.
+`valor` is the machine form with a decimal point; `ind_string` is the localised
+form with a comma, which parses as `61` or fails depending on the locale.
+
+**`Dados` is keyed by the period's label, but `Dim1` takes its code.** The 2022
+annual slice of `0008074` is requested with `Dim1=S7A2022` and returned under
+the key `"2022"`. Send the label and INE rejects it; look for the code as a key
+and nothing is found. `period_code` converts, and `indicator_data` takes either.
+
+**Failure arrives with HTTP 200.** An unknown indicator returns
+`{"Sucesso":{"Falso":[{"Msg":"...","Cod":"1"}]}}` with status 200. Every entry
+point checks `Sucesso` and throws INE's own message, so a typo is an error
+rather than an empty table.
+
+**The group catalogue ignores `lang` for titles.** `opc=3` localises `theme`
+and `subtheme` and nothing else: fetching it with `lang=EN` and `lang=PT` gives
+326 *identical* titles, all Portuguese, and 326 differing themes. That was
+measured by fetching both. So search it in Portuguese, or on the theme; the
+single-indicator call `opc=1` honours the language throughout, and is where an
+English title comes from.
+
+And one thing it does **not** do, despite a claim made while building this:
+the responses are clean UTF-8, declared `charset=UTF-8`. Nothing needs
+transcoding. A Windows console that renders `Tabuaço` as `Tabua?o` is the
+console's encoding, not the payload's, and the suite asserts the fixtures are
+valid UTF-8 carrying real diacritics so the difference stays visible.
+
 ## Weights without a geometry engine
 
 Contiguity is computed by hashing vertices and edges rather than by
@@ -128,10 +180,21 @@ One request returns **every level at once** - 347 rows for 308 municipalities,
 client-side rather than requested. Note also that the geography dimension is
 **`Dim2`**; `Dim1` is the reference period.
 
-Municipal coverage is per indicator and must be checked, never assumed. Of four
-indicators probed on 2026-11-06, three carry all 308 municipalities (`0014580`
-per capita purchasing power, `0014581` its national share, `0013189` population
-density) and one stops at NUTS III (`0013351` ageing ratio, 39 rows).
+Municipal coverage is per indicator and must be checked, never assumed -- but
+it need not be probed. The catalogue's `geo_lastlevel` states each indicator's
+finest geography, so `ismunicipal` answers in one 500 kB request what would
+otherwise take one data request per candidate. Of INE's 326 main-group
+indicators, 98 reach `Município` and 17 reach `Freguesia`; the latter count
+because a freguesia sits inside one municipality and so aggregates up, which
+makes **115** usable for a municipal `W`. NUTS III does not aggregate down,
+however it is spelled -- and INE spells it both `NUTS III` and `NUTS 3` in the
+same document, which is why `ismunicipal` is a function and not a string
+comparison at the call site.
+
+Probing confirmed it where it was checked: of four indicators pulled on
+2026-11-06, three carry all 308 municipalities (`0014580` per capita purchasing
+power, `0014581` its national share, `0013189` population density) and one
+stops at NUTS III (`0013351` ageing ratio, 39 rows).
 
 Indicator metadata states the geometry edition the figures were built on -
 "CAOP 2020 ... NUTS 2024" - so the boundary vintage is dictated by the data
@@ -172,6 +235,19 @@ indicator `0014580`, pulled 2026-11-06 - rather than hand-written examples.
 Counts are pinned to the actual hierarchy (308, 147, 26, 14, 278, 30), so a
 parser that handles the easy codes and drops the rest cannot pass.
 
+Layer 2 is tested **offline**, against five response bodies captured from INE
+on 2026-11-06 and seeded into a temporary cache with `cache_response!`. Because
+that cache is keyed by the request URL, a seeded response is found only if the
+code builds exactly the URL it would have fetched -- so the tests exercise the
+public entry points end to end, URL construction included, rather than calling
+the parsers and leaving the request side unchecked. One test seeds a
+deliberately altered title and asserts the alteration comes back, which is the
+proof that no request went out; without it a run on a networked machine could
+pass by silently fetching the real thing. A live suite that checks the API has
+not drifted is gated behind `PORTUGALINE_LIVE_TESTS=1` and is kept out of CI,
+because INE resets connections often enough that a green suite would stop
+meaning anything.
+
 Layer 3 is tested twice over. A synthetic 3x3 lattice of unit squares pins the
 algorithms against a closed form -- 12 rook links, 20 queen, degrees 2/3/4 and
 3/5/8 -- so a wrong implementation cannot pass by agreeing with itself. Then six
@@ -183,5 +259,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  114    114
+PortugalINE   |  270    270
 ```
+
+Measured on Julia 1.13.3 and 1.10.13, both green.
