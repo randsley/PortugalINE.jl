@@ -1,4 +1,4 @@
-using PortugalINE, Test
+using PortugalINE, Test, SparseArrays, LinearAlgebra
 using PortugalINE.Codes: DISTRICT_NAMES
 
 # The fixture is a real INE response: the geography dimension of indicator
@@ -88,6 +88,11 @@ end
     @test geolevel("PT") == COUNTRY
     @test geolevel("11") == NUTS2
     @test "PT" in codes
+end
+
+
+@testset "3. boundaries and weights" begin
+    include("test_boundaries.jl")
 end
 
 end

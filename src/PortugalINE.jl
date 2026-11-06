@@ -14,7 +14,13 @@ module PortugalINE
 include("Codes.jl")
 using .Codes
 
-export Codes
+include("Boundaries.jl")
+using .Boundaries
+
+export Codes, Boundaries
+export MunicipalBoundaries, CAOP_ATTRIBUTION,
+       read_caop_geojson, contiguity, neighbour_lists, centroids,
+       knn_contiguity, write_gal
 export GeoLevel, COUNTRY, NUTS1, NUTS2, NUTS3, MUNICIPALITY,
        geolevel, isnuts3, ismunicipality, dico, nuts3, district,
        ismainland, isisland
