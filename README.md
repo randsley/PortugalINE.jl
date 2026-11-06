@@ -309,6 +309,21 @@ not drifted is gated behind `PORTUGALINE_LIVE_TESTS=1` and is kept out of CI,
 because INE resets connections often enough that a green suite would stop
 meaning anything.
 
+Layers 2 and 4 are also checked against a dataset produced some other way.
+`scripts/verify_against_reference.jl` compares them value by value with the
+extract `build_spatial_dataset.py` produced through pyptine -- the dataset
+committed in SpatialEconometrics.jl under `notebooks/data`. On 2026-11-06 the
+two are **identical**: all five indicators across 308 municipalities match to
+the last published digit, every name agrees, the 278 mainland DICOs come out in
+the same order, and the queen graph is the same 739 links.
+
+That check is not in CI. It needs the network and about 200 MB of CAOP GeoJSON,
+and INE revises published figures, so a failure is as likely to be a revision
+as a regression -- which is why it pins the reference period rather than taking
+the latest available. Two independent routes to the same numbers is the only
+real evidence that either is right, and the unit tests cannot supply it: they
+run offline against six municipalities.
+
 Layer 4 is tested against the alternatives, not only against itself. The claim
 that the DICO is the right key is checked by joining two real extracts on all
 three candidate keys and counting the matches, so the figures in the table
