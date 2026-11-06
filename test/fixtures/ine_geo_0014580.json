@@ -1,0 +1,1390 @@
+[
+ {
+  "geocod": "1",
+  "name": "Continente"
+ },
+ {
+  "geocod": "11",
+  "name": "Norte"
+ },
+ {
+  "geocod": "111",
+  "name": "Alto Minho"
+ },
+ {
+  "geocod": "1111601",
+  "name": "Arcos de Valdevez"
+ },
+ {
+  "geocod": "1111602",
+  "name": "Caminha"
+ },
+ {
+  "geocod": "1111603",
+  "name": "Melgaço"
+ },
+ {
+  "geocod": "1111604",
+  "name": "Monção"
+ },
+ {
+  "geocod": "1111605",
+  "name": "Paredes de Coura"
+ },
+ {
+  "geocod": "1111606",
+  "name": "Ponte da Barca"
+ },
+ {
+  "geocod": "1111607",
+  "name": "Ponte de Lima"
+ },
+ {
+  "geocod": "1111608",
+  "name": "Valença"
+ },
+ {
+  "geocod": "1111609",
+  "name": "Viana do Castelo"
+ },
+ {
+  "geocod": "1111610",
+  "name": "Vila Nova de Cerveira"
+ },
+ {
+  "geocod": "112",
+  "name": "Cávado"
+ },
+ {
+  "geocod": "1120301",
+  "name": "Amares"
+ },
+ {
+  "geocod": "1120302",
+  "name": "Barcelos"
+ },
+ {
+  "geocod": "1120303",
+  "name": "Braga"
+ },
+ {
+  "geocod": "1120306",
+  "name": "Esposende"
+ },
+ {
+  "geocod": "1120310",
+  "name": "Terras de Bouro"
+ },
+ {
+  "geocod": "1120313",
+  "name": "Vila Verde"
+ },
+ {
+  "geocod": "119",
+  "name": "Ave"
+ },
+ {
+  "geocod": "1190304",
+  "name": "Cabeceiras de Basto"
+ },
+ {
+  "geocod": "1190307",
+  "name": "Fafe"
+ },
+ {
+  "geocod": "1190308",
+  "name": "Guimarães"
+ },
+ {
+  "geocod": "1190309",
+  "name": "Póvoa de Lanhoso"
+ },
+ {
+  "geocod": "1190311",
+  "name": "Vieira do Minho"
+ },
+ {
+  "geocod": "1190312",
+  "name": "Vila Nova de Famalicão"
+ },
+ {
+  "geocod": "1190314",
+  "name": "Vizela"
+ },
+ {
+  "geocod": "1191705",
+  "name": "Mondim de Basto"
+ },
+ {
+  "geocod": "11A",
+  "name": "Área Metropolitana do Porto"
+ },
+ {
+  "geocod": "11A0104",
+  "name": "Arouca"
+ },
+ {
+  "geocod": "11A0107",
+  "name": "Espinho"
+ },
+ {
+  "geocod": "11A0109",
+  "name": "Santa Maria da Feira"
+ },
+ {
+  "geocod": "11A0113",
+  "name": "Oliveira de Azeméis"
+ },
+ {
+  "geocod": "11A0116",
+  "name": "São João da Madeira"
+ },
+ {
+  "geocod": "11A0119",
+  "name": "Vale de Cambra"
+ },
+ {
+  "geocod": "11A1304",
+  "name": "Gondomar"
+ },
+ {
+  "geocod": "11A1306",
+  "name": "Maia"
+ },
+ {
+  "geocod": "11A1308",
+  "name": "Matosinhos"
+ },
+ {
+  "geocod": "11A1310",
+  "name": "Paredes"
+ },
+ {
+  "geocod": "11A1312",
+  "name": "Porto"
+ },
+ {
+  "geocod": "11A1313",
+  "name": "Póvoa de Varzim"
+ },
+ {
+  "geocod": "11A1314",
+  "name": "Santo Tirso"
+ },
+ {
+  "geocod": "11A1315",
+  "name": "Valongo"
+ },
+ {
+  "geocod": "11A1316",
+  "name": "Vila do Conde"
+ },
+ {
+  "geocod": "11A1317",
+  "name": "Vila Nova de Gaia"
+ },
+ {
+  "geocod": "11A1318",
+  "name": "Trofa"
+ },
+ {
+  "geocod": "11B",
+  "name": "Alto Tâmega e Barroso"
+ },
+ {
+  "geocod": "11B1702",
+  "name": "Boticas"
+ },
+ {
+  "geocod": "11B1703",
+  "name": "Chaves"
+ },
+ {
+  "geocod": "11B1706",
+  "name": "Montalegre"
+ },
+ {
+  "geocod": "11B1709",
+  "name": "Ribeira de Pena"
+ },
+ {
+  "geocod": "11B1712",
+  "name": "Valpaços"
+ },
+ {
+  "geocod": "11B1713",
+  "name": "Vila Pouca de Aguiar"
+ },
+ {
+  "geocod": "11C",
+  "name": "Tâmega e Sousa"
+ },
+ {
+  "geocod": "11C0106",
+  "name": "Castelo de Paiva"
+ },
+ {
+  "geocod": "11C0305",
+  "name": "Celorico de Basto"
+ },
+ {
+  "geocod": "11C1301",
+  "name": "Amarante"
+ },
+ {
+  "geocod": "11C1302",
+  "name": "Baião"
+ },
+ {
+  "geocod": "11C1303",
+  "name": "Felgueiras"
+ },
+ {
+  "geocod": "11C1305",
+  "name": "Lousada"
+ },
+ {
+  "geocod": "11C1307",
+  "name": "Marco de Canaveses"
+ },
+ {
+  "geocod": "11C1309",
+  "name": "Paços de Ferreira"
+ },
+ {
+  "geocod": "11C1311",
+  "name": "Penafiel"
+ },
+ {
+  "geocod": "11C1804",
+  "name": "Cinfães"
+ },
+ {
+  "geocod": "11C1813",
+  "name": "Resende"
+ },
+ {
+  "geocod": "11D",
+  "name": "Douro"
+ },
+ {
+  "geocod": "11D0403",
+  "name": "Carrazeda de Ansiães"
+ },
+ {
+  "geocod": "11D0404",
+  "name": "Freixo de Espada à Cinta"
+ },
+ {
+  "geocod": "11D0409",
+  "name": "Torre de Moncorvo"
+ },
+ {
+  "geocod": "11D0914",
+  "name": "Vila Nova de Foz Côa"
+ },
+ {
+  "geocod": "11D1701",
+  "name": "Alijó"
+ },
+ {
+  "geocod": "11D1704",
+  "name": "Mesão Frio"
+ },
+ {
+  "geocod": "11D1707",
+  "name": "Murça"
+ },
+ {
+  "geocod": "11D1708",
+  "name": "Peso da Régua"
+ },
+ {
+  "geocod": "11D1710",
+  "name": "Sabrosa"
+ },
+ {
+  "geocod": "11D1711",
+  "name": "Santa Marta de Penaguião"
+ },
+ {
+  "geocod": "11D1714",
+  "name": "Vila Real"
+ },
+ {
+  "geocod": "11D1801",
+  "name": "Armamar"
+ },
+ {
+  "geocod": "11D1805",
+  "name": "Lamego"
+ },
+ {
+  "geocod": "11D1807",
+  "name": "Moimenta da Beira"
+ },
+ {
+  "geocod": "11D1812",
+  "name": "Penedono"
+ },
+ {
+  "geocod": "11D1815",
+  "name": "São João da Pesqueira"
+ },
+ {
+  "geocod": "11D1818",
+  "name": "Sernancelhe"
+ },
+ {
+  "geocod": "11D1819",
+  "name": "Tabuaço"
+ },
+ {
+  "geocod": "11D1820",
+  "name": "Tarouca"
+ },
+ {
+  "geocod": "11E",
+  "name": "Terras de Trás-os-Montes"
+ },
+ {
+  "geocod": "11E0401",
+  "name": "Alfândega da Fé"
+ },
+ {
+  "geocod": "11E0402",
+  "name": "Bragança"
+ },
+ {
+  "geocod": "11E0405",
+  "name": "Macedo de Cavaleiros"
+ },
+ {
+  "geocod": "11E0406",
+  "name": "Miranda do Douro"
+ },
+ {
+  "geocod": "11E0407",
+  "name": "Mirandela"
+ },
+ {
+  "geocod": "11E0408",
+  "name": "Mogadouro"
+ },
+ {
+  "geocod": "11E0410",
+  "name": "Vila Flor"
+ },
+ {
+  "geocod": "11E0411",
+  "name": "Vimioso"
+ },
+ {
+  "geocod": "11E0412",
+  "name": "Vinhais"
+ },
+ {
+  "geocod": "15",
+  "name": "Algarve"
+ },
+ {
+  "geocod": "150",
+  "name": "Algarve"
+ },
+ {
+  "geocod": "1500801",
+  "name": "Albufeira"
+ },
+ {
+  "geocod": "1500802",
+  "name": "Alcoutim"
+ },
+ {
+  "geocod": "1500803",
+  "name": "Aljezur"
+ },
+ {
+  "geocod": "1500804",
+  "name": "Castro Marim"
+ },
+ {
+  "geocod": "1500805",
+  "name": "Faro"
+ },
+ {
+  "geocod": "1500806",
+  "name": "Lagoa"
+ },
+ {
+  "geocod": "1500807",
+  "name": "Lagos"
+ },
+ {
+  "geocod": "1500808",
+  "name": "Loulé"
+ },
+ {
+  "geocod": "1500809",
+  "name": "Monchique"
+ },
+ {
+  "geocod": "1500810",
+  "name": "Olhão"
+ },
+ {
+  "geocod": "1500811",
+  "name": "Portimão"
+ },
+ {
+  "geocod": "1500812",
+  "name": "São Brás de Alportel"
+ },
+ {
+  "geocod": "1500813",
+  "name": "Silves"
+ },
+ {
+  "geocod": "1500814",
+  "name": "Tavira"
+ },
+ {
+  "geocod": "1500815",
+  "name": "Vila do Bispo"
+ },
+ {
+  "geocod": "1500816",
+  "name": "Vila Real de Santo António"
+ },
+ {
+  "geocod": "19",
+  "name": "Centro"
+ },
+ {
+  "geocod": "191",
+  "name": "Região de Aveiro"
+ },
+ {
+  "geocod": "1910101",
+  "name": "Águeda"
+ },
+ {
+  "geocod": "1910102",
+  "name": "Albergaria-a-Velha"
+ },
+ {
+  "geocod": "1910103",
+  "name": "Anadia"
+ },
+ {
+  "geocod": "1910105",
+  "name": "Aveiro"
+ },
+ {
+  "geocod": "1910108",
+  "name": "Estarreja"
+ },
+ {
+  "geocod": "1910110",
+  "name": "Ílhavo"
+ },
+ {
+  "geocod": "1910112",
+  "name": "Murtosa"
+ },
+ {
+  "geocod": "1910114",
+  "name": "Oliveira do Bairro"
+ },
+ {
+  "geocod": "1910115",
+  "name": "Ovar"
+ },
+ {
+  "geocod": "1910117",
+  "name": "Sever do Vouga"
+ },
+ {
+  "geocod": "1910118",
+  "name": "Vagos"
+ },
+ {
+  "geocod": "192",
+  "name": "Região de Coimbra"
+ },
+ {
+  "geocod": "1920111",
+  "name": "Mealhada"
+ },
+ {
+  "geocod": "1920601",
+  "name": "Arganil"
+ },
+ {
+  "geocod": "1920602",
+  "name": "Cantanhede"
+ },
+ {
+  "geocod": "1920603",
+  "name": "Coimbra"
+ },
+ {
+  "geocod": "1920604",
+  "name": "Condeixa-a-Nova"
+ },
+ {
+  "geocod": "1920605",
+  "name": "Figueira da Foz"
+ },
+ {
+  "geocod": "1920606",
+  "name": "Góis"
+ },
+ {
+  "geocod": "1920607",
+  "name": "Lousã"
+ },
+ {
+  "geocod": "1920608",
+  "name": "Mira"
+ },
+ {
+  "geocod": "1920609",
+  "name": "Miranda do Corvo"
+ },
+ {
+  "geocod": "1920610",
+  "name": "Montemor-o-Velho"
+ },
+ {
+  "geocod": "1920611",
+  "name": "Oliveira do Hospital"
+ },
+ {
+  "geocod": "1920612",
+  "name": "Pampilhosa da Serra"
+ },
+ {
+  "geocod": "1920613",
+  "name": "Penacova"
+ },
+ {
+  "geocod": "1920614",
+  "name": "Penela"
+ },
+ {
+  "geocod": "1920615",
+  "name": "Soure"
+ },
+ {
+  "geocod": "1920616",
+  "name": "Tábua"
+ },
+ {
+  "geocod": "1920617",
+  "name": "Vila Nova de Poiares"
+ },
+ {
+  "geocod": "1921808",
+  "name": "Mortágua"
+ },
+ {
+  "geocod": "193",
+  "name": "Região de Leiria"
+ },
+ {
+  "geocod": "1931002",
+  "name": "Alvaiázere"
+ },
+ {
+  "geocod": "1931003",
+  "name": "Ansião"
+ },
+ {
+  "geocod": "1931004",
+  "name": "Batalha"
+ },
+ {
+  "geocod": "1931007",
+  "name": "Castanheira de Pêra"
+ },
+ {
+  "geocod": "1931008",
+  "name": "Figueiró dos Vinhos"
+ },
+ {
+  "geocod": "1931009",
+  "name": "Leiria"
+ },
+ {
+  "geocod": "1931010",
+  "name": "Marinha Grande"
+ },
+ {
+  "geocod": "1931013",
+  "name": "Pedrógão Grande"
+ },
+ {
+  "geocod": "1931015",
+  "name": "Pombal"
+ },
+ {
+  "geocod": "1931016",
+  "name": "Porto de Mós"
+ },
+ {
+  "geocod": "194",
+  "name": "Viseu Dão Lafões"
+ },
+ {
+  "geocod": "1940901",
+  "name": "Aguiar da Beira"
+ },
+ {
+  "geocod": "1941802",
+  "name": "Carregal do Sal"
+ },
+ {
+  "geocod": "1941803",
+  "name": "Castro Daire"
+ },
+ {
+  "geocod": "1941806",
+  "name": "Mangualde"
+ },
+ {
+  "geocod": "1941809",
+  "name": "Nelas"
+ },
+ {
+  "geocod": "1941810",
+  "name": "Oliveira de Frades"
+ },
+ {
+  "geocod": "1941811",
+  "name": "Penalva do Castelo"
+ },
+ {
+  "geocod": "1941814",
+  "name": "Santa Comba Dão"
+ },
+ {
+  "geocod": "1941816",
+  "name": "São Pedro do Sul"
+ },
+ {
+  "geocod": "1941817",
+  "name": "Sátão"
+ },
+ {
+  "geocod": "1941821",
+  "name": "Tondela"
+ },
+ {
+  "geocod": "1941822",
+  "name": "Vila Nova de Paiva"
+ },
+ {
+  "geocod": "1941823",
+  "name": "Viseu"
+ },
+ {
+  "geocod": "1941824",
+  "name": "Vouzela"
+ },
+ {
+  "geocod": "195",
+  "name": "Beira Baixa"
+ },
+ {
+  "geocod": "1950502",
+  "name": "Castelo Branco"
+ },
+ {
+  "geocod": "1950505",
+  "name": "Idanha-a-Nova"
+ },
+ {
+  "geocod": "1950506",
+  "name": "Oleiros"
+ },
+ {
+  "geocod": "1950507",
+  "name": "Penamacor"
+ },
+ {
+  "geocod": "1950508",
+  "name": "Proença-a-Nova"
+ },
+ {
+  "geocod": "1950509",
+  "name": "Sertã"
+ },
+ {
+  "geocod": "1950510",
+  "name": "Vila de Rei"
+ },
+ {
+  "geocod": "1950511",
+  "name": "Vila Velha de Ródão"
+ },
+ {
+  "geocod": "196",
+  "name": "Beiras e Serra da Estrela"
+ },
+ {
+  "geocod": "1960501",
+  "name": "Belmonte"
+ },
+ {
+  "geocod": "1960503",
+  "name": "Covilhã"
+ },
+ {
+  "geocod": "1960504",
+  "name": "Fundão"
+ },
+ {
+  "geocod": "1960902",
+  "name": "Almeida"
+ },
+ {
+  "geocod": "1960903",
+  "name": "Celorico da Beira"
+ },
+ {
+  "geocod": "1960904",
+  "name": "Figueira de Castelo Rodrigo"
+ },
+ {
+  "geocod": "1960905",
+  "name": "Fornos de Algodres"
+ },
+ {
+  "geocod": "1960906",
+  "name": "Gouveia"
+ },
+ {
+  "geocod": "1960907",
+  "name": "Guarda"
+ },
+ {
+  "geocod": "1960908",
+  "name": "Manteigas"
+ },
+ {
+  "geocod": "1960909",
+  "name": "Mêda"
+ },
+ {
+  "geocod": "1960910",
+  "name": "Pinhel"
+ },
+ {
+  "geocod": "1960911",
+  "name": "Sabugal"
+ },
+ {
+  "geocod": "1960912",
+  "name": "Seia"
+ },
+ {
+  "geocod": "1960913",
+  "name": "Trancoso"
+ },
+ {
+  "geocod": "1A",
+  "name": "Grande Lisboa"
+ },
+ {
+  "geocod": "1A0",
+  "name": "Grande Lisboa"
+ },
+ {
+  "geocod": "1A01105",
+  "name": "Cascais"
+ },
+ {
+  "geocod": "1A01106",
+  "name": "Lisboa"
+ },
+ {
+  "geocod": "1A01107",
+  "name": "Loures"
+ },
+ {
+  "geocod": "1A01109",
+  "name": "Mafra"
+ },
+ {
+  "geocod": "1A01110",
+  "name": "Oeiras"
+ },
+ {
+  "geocod": "1A01111",
+  "name": "Sintra"
+ },
+ {
+  "geocod": "1A01114",
+  "name": "Vila Franca de Xira"
+ },
+ {
+  "geocod": "1A01115",
+  "name": "Amadora"
+ },
+ {
+  "geocod": "1A01116",
+  "name": "Odivelas"
+ },
+ {
+  "geocod": "1B",
+  "name": "Península de Setúbal"
+ },
+ {
+  "geocod": "1B0",
+  "name": "Península de Setúbal"
+ },
+ {
+  "geocod": "1B01502",
+  "name": "Alcochete"
+ },
+ {
+  "geocod": "1B01503",
+  "name": "Almada"
+ },
+ {
+  "geocod": "1B01504",
+  "name": "Barreiro"
+ },
+ {
+  "geocod": "1B01506",
+  "name": "Moita"
+ },
+ {
+  "geocod": "1B01507",
+  "name": "Montijo"
+ },
+ {
+  "geocod": "1B01508",
+  "name": "Palmela"
+ },
+ {
+  "geocod": "1B01510",
+  "name": "Seixal"
+ },
+ {
+  "geocod": "1B01511",
+  "name": "Sesimbra"
+ },
+ {
+  "geocod": "1B01512",
+  "name": "Setúbal"
+ },
+ {
+  "geocod": "1C",
+  "name": "Alentejo"
+ },
+ {
+  "geocod": "1C1",
+  "name": "Alentejo Litoral"
+ },
+ {
+  "geocod": "1C10211",
+  "name": "Odemira"
+ },
+ {
+  "geocod": "1C11501",
+  "name": "Alcácer do Sal"
+ },
+ {
+  "geocod": "1C11505",
+  "name": "Grândola"
+ },
+ {
+  "geocod": "1C11509",
+  "name": "Santiago do Cacém"
+ },
+ {
+  "geocod": "1C11513",
+  "name": "Sines"
+ },
+ {
+  "geocod": "1C2",
+  "name": "Baixo Alentejo"
+ },
+ {
+  "geocod": "1C20201",
+  "name": "Aljustrel"
+ },
+ {
+  "geocod": "1C20202",
+  "name": "Almodôvar"
+ },
+ {
+  "geocod": "1C20203",
+  "name": "Alvito"
+ },
+ {
+  "geocod": "1C20204",
+  "name": "Barrancos"
+ },
+ {
+  "geocod": "1C20205",
+  "name": "Beja"
+ },
+ {
+  "geocod": "1C20206",
+  "name": "Castro Verde"
+ },
+ {
+  "geocod": "1C20207",
+  "name": "Cuba"
+ },
+ {
+  "geocod": "1C20208",
+  "name": "Ferreira do Alentejo"
+ },
+ {
+  "geocod": "1C20209",
+  "name": "Mértola"
+ },
+ {
+  "geocod": "1C20210",
+  "name": "Moura"
+ },
+ {
+  "geocod": "1C20212",
+  "name": "Ourique"
+ },
+ {
+  "geocod": "1C20213",
+  "name": "Serpa"
+ },
+ {
+  "geocod": "1C20214",
+  "name": "Vidigueira"
+ },
+ {
+  "geocod": "1C3",
+  "name": "Alto Alentejo"
+ },
+ {
+  "geocod": "1C31201",
+  "name": "Alter do Chão"
+ },
+ {
+  "geocod": "1C31202",
+  "name": "Arronches"
+ },
+ {
+  "geocod": "1C31203",
+  "name": "Avis"
+ },
+ {
+  "geocod": "1C31204",
+  "name": "Campo Maior"
+ },
+ {
+  "geocod": "1C31205",
+  "name": "Castelo de Vide"
+ },
+ {
+  "geocod": "1C31206",
+  "name": "Crato"
+ },
+ {
+  "geocod": "1C31207",
+  "name": "Elvas"
+ },
+ {
+  "geocod": "1C31208",
+  "name": "Fronteira"
+ },
+ {
+  "geocod": "1C31209",
+  "name": "Gavião"
+ },
+ {
+  "geocod": "1C31210",
+  "name": "Marvão"
+ },
+ {
+  "geocod": "1C31211",
+  "name": "Monforte"
+ },
+ {
+  "geocod": "1C31212",
+  "name": "Nisa"
+ },
+ {
+  "geocod": "1C31213",
+  "name": "Ponte de Sor"
+ },
+ {
+  "geocod": "1C31214",
+  "name": "Portalegre"
+ },
+ {
+  "geocod": "1C31215",
+  "name": "Sousel"
+ },
+ {
+  "geocod": "1C4",
+  "name": "Alentejo Central"
+ },
+ {
+  "geocod": "1C40701",
+  "name": "Alandroal"
+ },
+ {
+  "geocod": "1C40702",
+  "name": "Arraiolos"
+ },
+ {
+  "geocod": "1C40703",
+  "name": "Borba"
+ },
+ {
+  "geocod": "1C40704",
+  "name": "Estremoz"
+ },
+ {
+  "geocod": "1C40705",
+  "name": "Évora"
+ },
+ {
+  "geocod": "1C40706",
+  "name": "Montemor-o-Novo"
+ },
+ {
+  "geocod": "1C40707",
+  "name": "Mora"
+ },
+ {
+  "geocod": "1C40708",
+  "name": "Mourão"
+ },
+ {
+  "geocod": "1C40709",
+  "name": "Portel"
+ },
+ {
+  "geocod": "1C40710",
+  "name": "Redondo"
+ },
+ {
+  "geocod": "1C40711",
+  "name": "Reguengos de Monsaraz"
+ },
+ {
+  "geocod": "1C40712",
+  "name": "Vendas Novas"
+ },
+ {
+  "geocod": "1C40713",
+  "name": "Viana do Alentejo"
+ },
+ {
+  "geocod": "1C40714",
+  "name": "Vila Viçosa"
+ },
+ {
+  "geocod": "1D",
+  "name": "Oeste e Vale do Tejo"
+ },
+ {
+  "geocod": "1D1",
+  "name": "Oeste"
+ },
+ {
+  "geocod": "1D11001",
+  "name": "Alcobaça"
+ },
+ {
+  "geocod": "1D11005",
+  "name": "Bombarral"
+ },
+ {
+  "geocod": "1D11006",
+  "name": "Caldas da Rainha"
+ },
+ {
+  "geocod": "1D11011",
+  "name": "Nazaré"
+ },
+ {
+  "geocod": "1D11012",
+  "name": "Óbidos"
+ },
+ {
+  "geocod": "1D11014",
+  "name": "Peniche"
+ },
+ {
+  "geocod": "1D11101",
+  "name": "Alenquer"
+ },
+ {
+  "geocod": "1D11102",
+  "name": "Arruda dos Vinhos"
+ },
+ {
+  "geocod": "1D11104",
+  "name": "Cadaval"
+ },
+ {
+  "geocod": "1D11108",
+  "name": "Lourinhã"
+ },
+ {
+  "geocod": "1D11112",
+  "name": "Sobral de Monte Agraço"
+ },
+ {
+  "geocod": "1D11113",
+  "name": "Torres Vedras"
+ },
+ {
+  "geocod": "1D2",
+  "name": "Médio Tejo"
+ },
+ {
+  "geocod": "1D21401",
+  "name": "Abrantes"
+ },
+ {
+  "geocod": "1D21402",
+  "name": "Alcanena"
+ },
+ {
+  "geocod": "1D21408",
+  "name": "Constância"
+ },
+ {
+  "geocod": "1D21410",
+  "name": "Entroncamento"
+ },
+ {
+  "geocod": "1D21411",
+  "name": "Ferreira do Zêzere"
+ },
+ {
+  "geocod": "1D21413",
+  "name": "Mação"
+ },
+ {
+  "geocod": "1D21417",
+  "name": "Sardoal"
+ },
+ {
+  "geocod": "1D21418",
+  "name": "Tomar"
+ },
+ {
+  "geocod": "1D21419",
+  "name": "Torres Novas"
+ },
+ {
+  "geocod": "1D21420",
+  "name": "Vila Nova da Barquinha"
+ },
+ {
+  "geocod": "1D21421",
+  "name": "Ourém"
+ },
+ {
+  "geocod": "1D3",
+  "name": "Lezíria do Tejo"
+ },
+ {
+  "geocod": "1D31103",
+  "name": "Azambuja"
+ },
+ {
+  "geocod": "1D31403",
+  "name": "Almeirim"
+ },
+ {
+  "geocod": "1D31404",
+  "name": "Alpiarça"
+ },
+ {
+  "geocod": "1D31405",
+  "name": "Benavente"
+ },
+ {
+  "geocod": "1D31406",
+  "name": "Cartaxo"
+ },
+ {
+  "geocod": "1D31407",
+  "name": "Chamusca"
+ },
+ {
+  "geocod": "1D31409",
+  "name": "Coruche"
+ },
+ {
+  "geocod": "1D31412",
+  "name": "Golegã"
+ },
+ {
+  "geocod": "1D31414",
+  "name": "Rio Maior"
+ },
+ {
+  "geocod": "1D31415",
+  "name": "Salvaterra de Magos"
+ },
+ {
+  "geocod": "1D31416",
+  "name": "Santarém"
+ },
+ {
+  "geocod": "2",
+  "name": "Região Autónoma dos Açores"
+ },
+ {
+  "geocod": "20",
+  "name": "Região Autónoma dos Açores"
+ },
+ {
+  "geocod": "200",
+  "name": "Região Autónoma dos Açores"
+ },
+ {
+  "geocod": "2004101",
+  "name": "Vila do Porto"
+ },
+ {
+  "geocod": "2004201",
+  "name": "Lagoa (R.A.A.)"
+ },
+ {
+  "geocod": "2004202",
+  "name": "Nordeste"
+ },
+ {
+  "geocod": "2004203",
+  "name": "Ponta Delgada"
+ },
+ {
+  "geocod": "2004204",
+  "name": "Povoação"
+ },
+ {
+  "geocod": "2004205",
+  "name": "Ribeira Grande"
+ },
+ {
+  "geocod": "2004206",
+  "name": "Vila Franca do Campo"
+ },
+ {
+  "geocod": "2004301",
+  "name": "Angra do Heroísmo"
+ },
+ {
+  "geocod": "2004302",
+  "name": "Vila da Praia da Vitória"
+ },
+ {
+  "geocod": "2004401",
+  "name": "Santa Cruz da Graciosa"
+ },
+ {
+  "geocod": "2004501",
+  "name": "Calheta (R.A.A.)"
+ },
+ {
+  "geocod": "2004502",
+  "name": "Velas"
+ },
+ {
+  "geocod": "2004601",
+  "name": "Lajes do Pico"
+ },
+ {
+  "geocod": "2004602",
+  "name": "Madalena"
+ },
+ {
+  "geocod": "2004603",
+  "name": "São Roque do Pico"
+ },
+ {
+  "geocod": "2004701",
+  "name": "Horta"
+ },
+ {
+  "geocod": "2004801",
+  "name": "Lajes das Flores"
+ },
+ {
+  "geocod": "2004802",
+  "name": "Santa Cruz das Flores"
+ },
+ {
+  "geocod": "2004901",
+  "name": "Corvo"
+ },
+ {
+  "geocod": "3",
+  "name": "Região Autónoma da Madeira"
+ },
+ {
+  "geocod": "30",
+  "name": "Região Autónoma da Madeira"
+ },
+ {
+  "geocod": "300",
+  "name": "Região Autónoma da Madeira"
+ },
+ {
+  "geocod": "3003101",
+  "name": "Calheta (R.A.M.)"
+ },
+ {
+  "geocod": "3003102",
+  "name": "Câmara de Lobos"
+ },
+ {
+  "geocod": "3003103",
+  "name": "Funchal"
+ },
+ {
+  "geocod": "3003104",
+  "name": "Machico"
+ },
+ {
+  "geocod": "3003105",
+  "name": "Ponta do Sol"
+ },
+ {
+  "geocod": "3003106",
+  "name": "Porto Moniz"
+ },
+ {
+  "geocod": "3003107",
+  "name": "Ribeira Brava"
+ },
+ {
+  "geocod": "3003108",
+  "name": "Santa Cruz"
+ },
+ {
+  "geocod": "3003109",
+  "name": "Santana"
+ },
+ {
+  "geocod": "3003110",
+  "name": "São Vicente"
+ },
+ {
+  "geocod": "3003201",
+  "name": "Porto Santo"
+ },
+ {
+  "geocod": "PT",
+  "name": "Portugal"
+ }
+]

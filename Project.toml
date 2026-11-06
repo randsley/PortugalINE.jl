@@ -1,0 +1,17 @@
+name = "PortugalINE"
+uuid = "646e5d9a-f2d8-4195-ba6d-f88b8c418462"
+authors = ["Nigel Randsley"]
+version = "0.1.0-DEV"
+
+[deps]
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+
+[compat]
+JSON3 = "1"
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
