@@ -4,12 +4,12 @@ A Julia client for **Statistics Portugal (INE)**, built for spatial work: the
 geography codes, the indicator API, and weights matrices from INE's own
 geometry.
 
-> **Status: 0.1.0-DEV.** Layers 1 (geography codes), 2 (the indicator API) and
-> 3 (boundaries and weights) are implemented and tested. Layer 4, the join, is
-> not written yet; until it is, `municipal_values` plus a sort on DICO does it
-> in two lines. `scripts/build_spatial_dataset.py` remains as the
+> **Status: 0.1.0-DEV.** All four layers are implemented and tested.
+> `scripts/build_dataset.jl` runs the whole pipeline -- catalogue check,
+> indicators, boundaries, join, output -- in Julia.
+> `scripts/build_spatial_dataset.py` is kept as the
 > [`pyptine`](https://github.com/randsley/pyptine) route that produced the
-> first extract.
+> first extract before layer 2 existed, not because anything still needs it.
 
 ## Why this exists
 
@@ -26,7 +26,7 @@ half plus enough of the API to join to it.
 | 1. Codes | the geography code hierarchy, DICO parsing, mainland/island | done |
 | 2. API | catalogue (`xml_indic.jsp`), indicators (`pindica.jsp`), disk cache | done |
 | 3. Geometry | CAOP reader, `W` by queen/rook contiguity and k-nearest, GAL output | done |
-| 4. Join | indicators to geometry on DICO, island handling made explicit | planned |
+| 4. Join | indicators to geometry on DICO, island handling made explicit | done |
 
 Deliberately **out of scope**: plotting, descriptive analytics (year-on-year,
 moving averages) and a CLI. `pyptine` carries those because Python users expect
@@ -130,6 +130,67 @@ the responses are clean UTF-8, declared `charset=UTF-8`. Nothing needs
 transcoding. A Windows console that renders `Tabuaço` as `Tabua?o` is the
 console's encoding, not the payload's, and the suite asserts the fixtures are
 valid UTF-8 carrying real diacritics so the difference stays visible.
+
+## What layer 4 knows
+
+```julia
+b  = read_caop_geojson("caop_municipios.json")
+pp = indicator_data("0014580"; period = "2023")
+de = indicator_data("0013189"; period = "2023")
+
+ds = join_municipal(b, :purchasing_power => pp, :density => de)
+W  = spatial_weights(ds)                 # row-standardised, over these units
+m  = model_matrix(ds, :purchasing_power, :density)
+write_dataset("data", ds)                # CSV + GAL + centroids + provenance
+```
+
+### Why the key is the DICO, measured rather than argued
+
+0014580 is published on NUTS 2024 and 0008074 on NUTS 2013. Both carry all 308
+municipalities, so every shortfall below is the key failing, not missing data:
+
+| key | matches |
+|---|---|
+| NUTS code (`geocod`) | **132 of 308** |
+| name (`geodsg`) | 305 of 308 |
+| DICO | **308 of 308** |
+
+Lisboa is `1A01106` under NUTS 2024 and `1701106` under NUTS 2013, so joining
+on the identifier INE returns first loses 57% of the country in silence. The
+name is worse than its 305 suggests: the three mismatches are a disambiguating
+suffix, and without it `Calheta` names **two** municipalities, 3101 in Madeira
+and 4501 in the Azores. The DICO is the last four characters of either code and
+is stable because it is the official district-and-municipality number rather
+than a statistical grouping. The suite pins all three figures.
+
+When two extracts disagree about a municipality's NUTS code, the dataset says
+so and reports how many the alternative join would have matched, so a vintage
+difference is a line of output rather than a discovery made later.
+
+### Why the matrix is rebuilt and never sliced
+
+Dropping a unit changes its neighbours' degrees, so a row-standardised `W` from
+the full set is wrong for any subset of it. Everything here therefore carries
+**binary** adjacency and standardises last: `spatial_weights` on the dataset,
+and `model_matrix` again after dropping incomplete cases.
+
+This is a quiet failure, not a loud one. Slicing a standardised matrix leaves
+the untouched rows summing to one and breaks only the rows beside what was
+dropped, so a "do the rows sum to one?" check passes on the wrong answer. The
+suite asserts the rebuilt matrix *differs* from the sliced one, and names the
+rows that differ. If dropping incomplete cases leaves a unit with no
+neighbours, that is an error naming the unit rather than a division by zero.
+
+### The islands, counted apart
+
+The 30 island municipalities have data and no land neighbours, and CAOP serves
+the mainland as its own collection, so the usual join settles on 278 units.
+That is the right answer reached the wrong way, so every dropped unit is
+recorded and the islands are counted separately from everything else -- the
+second kind means the boundary vintage and the indicator's geography disagree
+about what exists, and the first does not. Note that the island districts are
+`31`, **`32`** (Porto Santo), and `41` to `49`; writing out "Madeira and the
+Azores" by hand leaves out the second, which is why the suite pins the set.
 
 ## Weights without a geometry engine
 
@@ -248,6 +309,13 @@ not drifted is gated behind `PORTUGALINE_LIVE_TESTS=1` and is kept out of CI,
 because INE resets connections often enough that a green suite would stop
 meaning anything.
 
+Layer 4 is tested against the alternatives, not only against itself. The claim
+that the DICO is the right key is checked by joining two real extracts on all
+three candidate keys and counting the matches, so the figures in the table
+above are the figures the suite enforces. The rebuild-not-slice rule is checked
+by asserting the two give *different* matrices, because a test that only
+checked row sums would pass on either.
+
 Layer 3 is tested twice over. A synthetic 3x3 lattice of unit squares pins the
 algorithms against a closed form -- 12 rook links, 20 queen, degrees 2/3/4 and
 3/5/8 -- so a wrong implementation cannot pass by agreeing with itself. Then six
@@ -259,7 +327,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  270    270
+PortugalINE   |  403    403
 ```
 
 Measured on Julia 1.13.3 and 1.10.13, both green.

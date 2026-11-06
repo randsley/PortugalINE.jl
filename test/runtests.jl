@@ -99,4 +99,8 @@ end
     include("test_boundaries.jl")
 end
 
+@testset "4. the join" begin
+    include("test_join.jl")
+end
+
 end

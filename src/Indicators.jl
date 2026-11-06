@@ -679,7 +679,13 @@ _normalise_name(s::AbstractString) = join(split(s), " ")
 Reduce an [`IndicatorData`](@ref) to the municipal rows, keyed by DICO and
 sorted by it, which is the ordering the weights files from
 [`PortugalINE.Boundaries`](@ref) use. The result is a column table with `dico`,
-`name` and `value`.
+`geocod`, `name` and `value`.
+
+`geocod` is kept alongside the DICO because it carries the NUTS vintage the
+figures were published on, and that is not cosmetic: the same municipality has
+one NUTS code under NUTS 2024 and another under NUTS 2013. The DICO is stable
+across both, which is why it is the key and the NUTS code is only a record of
+where the figure came from.
 
 Non-municipal rows are dropped: an INE geography response is a hierarchy, so
 the 347 rows of indicator 0014580 are 308 municipalities plus country, NUTS I,
@@ -721,6 +727,7 @@ function municipal_values(d::IndicatorData; period = nothing)
 
     perm = sortperm(ds)
     return (dico = ds[perm],
+            geocod = [t.geocod[i] for i in keep][perm],
             name = [t.geodsg[i] for i in keep][perm],
             value = [t.value[i] for i in keep][perm])
 end

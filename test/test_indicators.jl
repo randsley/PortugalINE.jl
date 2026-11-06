@@ -158,7 +158,9 @@ end
 @testset "municipal_values keys on DICO and drops the aggregates" begin
     d = indicator_data("0014580"; period = "2023", cache = CACHE)
     m = municipal_values(d)
-    @test keys(m) == (:dico, :name, :value)
+    @test keys(m) == (:dico, :geocod, :name, :value)
+    # The NUTS code is kept because it records the vintage; it is not the key.
+    @test m.geocod[findfirst(==("1106"), m.dico)] == "1A01106"
 
     # 347 rows in, 308 out: the other 39 are Portugal, NUTS I, NUTS II and
     # NUTS III totals. Keeping them would double-count the country four times.

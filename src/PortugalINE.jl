@@ -20,7 +20,12 @@ using .Indicators
 include("Boundaries.jl")
 using .Boundaries
 
-export Codes, Indicators, Boundaries
+include("Join.jl")
+using .Join
+
+export Codes, Indicators, Boundaries, Join
+export MunicipalDataset, join_municipal, spatial_weights, model_matrix,
+       write_dataset, dropped, notes
 export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
        CatalogueEntry,
        indicator_metadata, indicator_data, catalogue, catalogue_entry,
