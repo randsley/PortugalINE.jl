@@ -284,6 +284,14 @@ end
     # Every level is accounted for, so a level this package does not recognise
     # cannot hide in the tail.
     @test sum(values(lv)) == 326
+
+    # The group is not all of INE. 0014581 is published to Município and is
+    # absent from this listing entirely, so 115 is a floor on the municipal
+    # indicators rather than a census of them, and a code missing from here is
+    # not an unpublished code. Found when a build script treated a missing
+    # entry as fatal.
+    @test !any(c -> c.varcd == "0014581", cat)
+    @test any(c -> c.varcd == "0014580", cat)
 end
 
 @testset "the group catalogue localises the theme and nothing else" begin

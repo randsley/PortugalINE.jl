@@ -4,12 +4,16 @@
 #
 #     julia --project=. scripts/verify_against_reference.jl <caop.json> <data-dir>
 #
-# Written to check layers 2 and 4 against the extract that
-# scripts/build_spatial_dataset.py produced through pyptine, which is the
-# dataset committed in SpatialEconometrics.jl under notebooks/data. Two
-# independent routes to the same numbers is the only real evidence that either
-# is right, and the unit tests cannot supply it: they run offline against six
+# Written to check layers 2 and 4 against the extract the pyptine route
+# produced, which was the dataset committed in SpatialEconometrics.jl under
+# notebooks/data before `build_notebook_dataset.jl` took over. Two independent
+# routes to the same numbers is the only real evidence that either is right,
+# and the unit tests cannot supply it: they run offline against six
 # municipalities.
+#
+# It still earns its keep against the committed dataset, which the Julia route
+# now produces: re-run it after an INE release and a revised figure shows up
+# as a mismatch instead of passing unnoticed into a notebook.
 #
 # It is not in CI. It needs the network and about 200 MB of CAOP GeoJSON, and
 # INE revises published figures, so a failure here is as likely to be a

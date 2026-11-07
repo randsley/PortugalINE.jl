@@ -20,6 +20,12 @@ Of the 326 indicators in INE's main group, 98 reach `Município` and 17 reach
 [`ismunicipal`](@ref) applies that reasoning, and also absorbs INE's
 inconsistent spelling of its own levels (both `NUTS III` and `NUTS 3` occur).
 
+The main group is **not** all of INE: indicator `0014581` is published to
+`Município` and does not appear in the group listing at all. So 115 is a floor
+and not a census, [`catalogue`](@ref) is a cheap first pass rather than an
+authority, and [`catalogue_entry`](@ref) is how a code the group omits gets
+checked.
+
 ## The group catalogue ignores `lang` for titles
 
 `xml_indic.jsp?opc=3` localises `theme` and `subtheme` and nothing else. All
@@ -760,6 +766,10 @@ end
 Every indicator in INE's main group, as [`CatalogueEntry`](@ref) values. One
 request of roughly 500 kB, against one request per indicator for the same
 information.
+
+The group is not exhaustive -- `0014581` is a municipal indicator that is not
+in it -- so a code absent from this listing is not an unpublished code. Look it
+up with [`catalogue_entry`](@ref) before concluding anything.
 
 `language` affects `theme` and `subtheme` only. Titles, descriptions and
 keywords arrive in Portuguese whatever is passed, which is INE's behaviour and

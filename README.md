@@ -4,12 +4,8 @@ A Julia client for **Statistics Portugal (INE)**, built for spatial work: the
 geography codes, the indicator API, and weights matrices from INE's own
 geometry.
 
-> **Status: 0.1.0-DEV.** All four layers are implemented and tested.
-> `scripts/build_dataset.jl` runs the whole pipeline -- catalogue check,
-> indicators, boundaries, join, output -- in Julia.
-> `scripts/build_spatial_dataset.py` is kept as the
-> [`pyptine`](https://github.com/randsley/pyptine) route that produced the
-> first extract before layer 2 existed, not because anything still needs it.
+> **Status: 0.1.0-DEV.** All four layers are implemented and tested, and the
+> pipeline runs end to end in Julia.
 
 ## Why this exists
 
@@ -37,6 +33,24 @@ Geometry needs **no extension and no geometry engine** after all. The original
 plan was to put CAOP behind a package extension on ArchGDAL or GEOS; measuring
 the data made that unnecessary, and the reasoning is under
 [Weights without a geometry engine](#weights-without-a-geometry-engine).
+
+## Scripts
+
+| script | what |
+|---|---|
+| `build_notebook_dataset.jl` | the dataset SpatialEconometrics.jl's notebooks use: 308 attribute rows, mainland weights, one provenance file |
+| `build_dataset.jl` | the general form -- any indicator list, straight through `join_municipal` and `write_dataset` |
+| `verify_against_reference.jl` | compares this package's output against a dataset produced some other way, value by value |
+
+`build_notebook_dataset.jl` replaced two earlier scripts: a
+[`pyptine`](https://github.com/randsley/pyptine)-based Python extract written
+before layer 2 existed, and a separate weights builder that wrote a second
+provenance file for the same dataset. Both were removed rather than kept,
+because two scripts producing one dataset is how the two halves of it come to
+disagree. `verify_against_reference.jl` checked the replacement against the
+Python route value by value before the switch; the general layer 3 API
+(`read_caop_geojson`, `write_gal`, `centroids`) covers what the weights builder
+did, in four calls.
 
 ## What layer 1 knows
 
@@ -252,10 +266,19 @@ however it is spelled -- and INE spells it both `NUTS III` and `NUTS 3` in the
 same document, which is why `ismunicipal` is a function and not a string
 comparison at the call site.
 
-Probing confirmed it where it was checked: of four indicators pulled on
-2026-11-06, three carry all 308 municipalities (`0014580` per capita purchasing
-power, `0014581` its national share, `0013189` population density) and one
-stops at NUTS III (`0013351` ageing ratio, 39 rows).
+**The main group is not all of INE, though.** `0014581`, the national share of
+purchasing power, is published to `Município` and is absent from the group
+listing entirely -- found when a build script treated a missing entry as fatal.
+So 115 is a floor on the municipal indicators, not a census of them, and
+`catalogue()` is the cheap first pass rather than the authority.
+`catalogue_entry` serves indicators outside the group and is the fallback both
+build scripts use; checking coverage for a known code costs one small request,
+not 500 kB.
+
+Probing confirmed the coverage where it was checked: of four indicators pulled
+on 2026-11-06, three carry all 308 municipalities (`0014580` per capita
+purchasing power, `0014581` its national share, `0013189` population density)
+and one stops at NUTS III (`0013351` ageing ratio, 39 rows).
 
 Indicator metadata states the geometry edition the figures were built on -
 "CAOP 2020 ... NUTS 2024" - so the boundary vintage is dictated by the data
@@ -310,12 +333,19 @@ because INE resets connections often enough that a green suite would stop
 meaning anything.
 
 Layers 2 and 4 are also checked against a dataset produced some other way.
-`scripts/verify_against_reference.jl` compares them value by value with the
-extract `build_spatial_dataset.py` produced through pyptine -- the dataset
-committed in SpatialEconometrics.jl under `notebooks/data`. On 2026-11-06 the
-two are **identical**: all five indicators across 308 municipalities match to
-the last published digit, every name agrees, the 278 mainland DICOs come out in
-the same order, and the queen graph is the same 739 links.
+`scripts/verify_against_reference.jl` compared them value by value with the
+extract the pyptine route produced. On 2026-11-06 the two were **identical**:
+all five indicators across 308 municipalities matching to the last published
+digit, every name agreeing, the 278 mainland DICOs in the same order, and the
+same 739 queen links. That is what justified replacing the Python route rather
+than keeping both.
+
+Regenerating the dataset through the Julia route afterwards changed exactly one
+thing: four district names gained the diacritics they should always have had --
+Bragança, Évora, Santarém and Setúbal -- which also removed an internal
+inconsistency, since the municipality `Bragança` had been sitting in a district
+spelled `Braganca`. No indicator value and no municipality name moved, and the
+three geometry files were byte-identical.
 
 That check is not in CI. It needs the network and about 200 MB of CAOP GeoJSON,
 and INE revises published figures, so a failure is as likely to be a revision
@@ -342,7 +372,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  403    403
+PortugalINE   |  405    405
 ```
 
 Measured on Julia 1.13.3 and 1.10.13, both green.

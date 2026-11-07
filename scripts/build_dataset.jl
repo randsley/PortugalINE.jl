@@ -9,9 +9,10 @@
 # With no second argument the boundaries are downloaded from DGT's OGC API,
 # which is about 200 MB of GeoJSON, so pass a local copy when iterating.
 #
-# This replaces `scripts/build_spatial_dataset.py`, the pyptine-based interim
-# that produced the first extract before layer 2 existed. That script is kept
-# for comparison, not because anything still needs it.
+# For the specific dataset SpatialEconometrics.jl's notebooks use, with its
+# island rows and district columns, see `build_notebook_dataset.jl`. This is
+# the general form: give it an indicator list and it runs straight through
+# `join_municipal` and `write_dataset`.
 
 using PortugalINE
 using Printf
@@ -47,12 +48,12 @@ function main(args)
     @info "checking municipal coverage against the catalogue"
     cat = catalogue()
     by = Dict(e.varcd => e for e in cat)
+    # The main group is 326 indicators and not all of INE -- 0014581 is absent
+    # from it -- so fall back to the single-indicator endpoint rather than
+    # leaving coverage unverified for anything the group listing omits.
     for (name, code) in INDICATORS
         e = get(by, code, nothing)
-        if e === nothing
-            @warn "not in the main-group catalogue; coverage unverified" name code
-            continue
-        end
+        e === nothing && (e = catalogue_entry(code))
         ismunicipal(e) || error(
             "indicator $code ($name) is published only to $(e.geo_lastlevel), " *
             "so it cannot carry a municipal W. Pick another indicator.")
