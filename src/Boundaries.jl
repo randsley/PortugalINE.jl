@@ -40,7 +40,7 @@ using SparseArrays
 using LinearAlgebra: Diagonal
 using JSON3
 
-using ..Codes: ismunicipality
+using ..Codes: ismunicipality, _isdicofre
 
 export MunicipalBoundaries, CAOP_ATTRIBUTION,
        read_caop_geojson, contiguity, neighbour_lists, centroids,
@@ -62,20 +62,36 @@ const Ring = Vector{Tuple{Float64, Float64}}
 """
     MunicipalBoundaries
 
-Polygon rings for a set of municipalities, with their DICO codes and names.
+Polygon rings for a set of municipalities or parishes, with their codes and
+names. Despite the name it holds either level; `level` says which.
 
 # Fields
-- `codes`: the DICO of each municipality, in feature order.
-- `names`: the municipality names.
-- `rings`: for each municipality, its rings. A municipality with islands or
-  exclaves has more than one, and every ring is used for contiguity, so an
-  exclave's neighbours are found as readily as the mainland body's.
+- `codes`: the DICO of each municipality, or the DICOFRE of each parish, in
+  feature order.
+- `names`: the unit names.
+- `rings`: for each unit, its rings. A unit with islands or exclaves has more
+  than one, and every ring is used for contiguity, so an exclave's neighbours
+  are found as readily as the main body's.
+- `level`: `:municipality` or `:parish`.
 """
 struct MunicipalBoundaries
     codes::Vector{String}
     names::Vector{String}
     rings::Vector{Vector{Ring}}
+    level::Symbol
+    function MunicipalBoundaries(codes, names, rings, level::Symbol)
+        level in (:municipality, :parish) || throw(ArgumentError(
+            "level must be :municipality or :parish, got $(repr(level))"))
+        new(codes, names, rings, level)
+    end
 end
+
+MunicipalBoundaries(codes, names, rings) =
+    MunicipalBoundaries(codes, names, rings, :municipality)
+
+# The noun for a level, singular or plural.
+_noun(level::Symbol, n::Integer) = level === :parish ?
+    (n == 1 ? "parish" : "parishes") : (n == 1 ? "municipality" : "municipalities")
 
 """
     ncounties(b::MunicipalBoundaries) -> Int
@@ -88,7 +104,7 @@ Base.length(b::MunicipalBoundaries) = length(b.codes)
 
 function Base.show(io::IO, b::MunicipalBoundaries)
     nv = sum(length(r) for m in b.rings for r in m)
-    print(io, "MunicipalBoundaries(", length(b.codes), " municipalities, ",
+    print(io, "MunicipalBoundaries(", length(b.codes), " ", _noun(b.level, length(b.codes)), ", ",
           sum(length, b.rings), " rings, ", nv, " vertices)")
 end
 
@@ -116,10 +132,10 @@ function _collect_rings!(out::Vector{Ring}, coords)
 end
 
 """
-    read_caop_geojson(path; code_property = "dtmn", name_property = "municipio")
+    read_caop_geojson(path; level = :municipality, code_property, name_property)
 
-Read municipal boundaries from a CAOP GeoJSON feature collection, as DGT's OGC
-API serves it:
+Read municipal or parish boundaries from a CAOP GeoJSON feature collection, as
+DGT's OGC API serves it:
 
 ```
 https://ogcapi.dgterritorio.gov.pt/collections/municipios/items?f=json&limit=400
@@ -136,13 +152,26 @@ Each is checked to be four digits, because the DICO is what joins these
 boundaries to INE's indicators and a silent mismatch there is unrecoverable
 later.
 
+With `level = :parish` the defaults are `code_property = "dtmnfr"` and
+`name_property = "freguesia"`, and each code is checked to be a DICOFRE (four
+digits, then two digits or capital letters; see [`dicofre`](@ref)). DGT's API serves only the current CAOP, whose parish map is not the one
+INE publishes on (see [`parish_values`](@ref)); an older vintage comes as a
+GeoPackage, which `scripts/caop_gpkg_to_geojson.py` converts to this format with
+the coordinates unchanged.
+
 The file is large — the full mainland collection is about 200 MB of JSON for
 1.25 million vertices — so expect this to take a few seconds and a few
 gigabytes of transient memory.
 """
 function read_caop_geojson(path::AbstractString;
-                           code_property::AbstractString = "dtmn",
-                           name_property::AbstractString = "municipio")
+                           level::Symbol = :municipality,
+                           code_property::AbstractString =
+                               level === :parish ? "dtmnfr" : "dtmn",
+                           name_property::AbstractString =
+                               level === :parish ? "freguesia" : "municipio")
+    level in (:municipality, :parish) || throw(ArgumentError(
+        "level must be :municipality or :parish, got $(repr(level))"))
+    keyname, caopname = level === :parish ? ("DICOFRE", "dtmnfr") : ("DICO", "dtmn")
     fc = JSON3.read(read(path, String))
     haskey(fc, :features) || throw(ArgumentError(
         "$(repr(path)) is not a GeoJSON FeatureCollection: no \"features\" key"))
@@ -155,15 +184,19 @@ function read_caop_geojson(path::AbstractString;
     for (i, f) in enumerate(feats)
         props = get(f, :properties, nothing)
         props === nothing && throw(ArgumentError(
-            "feature $i has no properties, so its DICO cannot be read"))
+            "feature $i has no properties, so its $keyname cannot be read"))
         haskey(props, code_sym) || throw(ArgumentError(
             "feature $i has no property $(repr(code_property)); " *
-            "CAOP calls the municipality code \"dtmn\""))
+            "CAOP calls the " * (level === :parish ? "parish" : "municipality") *
+            " code \"$caopname\""))
         code = string(props[code_sym])
-        (length(code) == 4 && all(isdigit, code)) || throw(ArgumentError(
+        ok = level === :parish ? _isdicofre(code) : (length(code) == 4 && all(isdigit, code))
+        ok || throw(ArgumentError(
             "feature $i has $(repr(code_property)) = $(repr(code)), which is " *
-            "not a four-digit DICO; without it these boundaries cannot be " *
-            "joined to INE indicators"))
+            "not a " * (level === :parish ?
+                "DICOFRE (four digits, then two digits or capital letters)" :
+                "four-digit DICO") *
+            "; without it these boundaries cannot be joined to INE indicators"))
         geom = get(f, :geometry, nothing)
         geom === nothing && throw(ArgumentError("feature $i has no geometry"))
         rs = Ring[]
@@ -177,9 +210,9 @@ function read_caop_geojson(path::AbstractString;
     end
     if length(unique(codes)) != length(codes)
         dup = join([c for c in unique(codes) if count(==(c), codes) > 1], ", ")
-        throw(ArgumentError("duplicate DICO codes: $dup"))
+        throw(ArgumentError("duplicate $keyname codes: $dup"))
     end
-    return MunicipalBoundaries(codes, names, rings)
+    return MunicipalBoundaries(codes, names, rings, level)
 end
 
 # A ring's vertices, with a duplicated closing vertex dropped so that a closed
@@ -271,8 +304,8 @@ function contiguity(b::MunicipalBoundaries; criterion::Symbol = :queen,
         bad = findall(iszero, rs)
         if !isempty(bad)
             throw(ArgumentError(
-                "cannot row-standardise: $(length(bad)) municipalit" *
-                (length(bad) == 1 ? "y has" : "ies have") * " no neighbours (" *
+                "cannot row-standardise: $(length(bad)) " * _noun(b.level, length(bad)) *
+                (length(bad) == 1 ? " has" : " have") * " no neighbours (" *
                 join(b.names[first(bad, 5)], ", ") *
                 (length(bad) > 5 ? ", ..." : "") *
                 "). Island municipalities share no land border, so a " *
@@ -398,7 +431,9 @@ function write_gal(path::AbstractString, b::MunicipalBoundaries;
     nb = neighbour_lists(b; criterion = criterion)
     n = length(nb)
     open(path, "w") do io
-        println(io, "0 ", n, " municipios ", id === :code ? "dtmn" : "municipio")
+        par = b.level === :parish
+        println(io, "0 ", n, par ? " freguesias " : " municipios ",
+                id === :code ? (par ? "dtmnfr" : "dtmn") : (par ? "freguesia" : "municipio"))
         for i in 1:n
             println(io, labels[i], " ", length(nb[i]))
             println(io, join((labels[j] for j in nb[i]), " "))

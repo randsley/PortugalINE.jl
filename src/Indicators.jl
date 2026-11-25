@@ -76,12 +76,12 @@ using JSON3
 using SHA: sha256
 import Downloads
 
-using ..Codes: ismunicipality, dico
+using ..Codes: ismunicipality, isparish, dico, dicofre
 
 export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
        CatalogueEntry,
        indicator_metadata, indicator_data, catalogue, catalogue_entry,
-       municipal_values, period_code, periods, ismunicipal, search_catalogue,
+       municipal_values, parish_values, period_code, periods, ismunicipal, search_catalogue,
        ine_cache_dir, clear_ine_cache!, cache_response!, ine_citation,
        parse_value
 
@@ -703,6 +703,40 @@ absent.
 With more than one period present, `period` is required.
 """
 function municipal_values(d::IndicatorData; period = nothing)
+    v = _unit_values(d, :municipality; period)
+    return (dico = v.key, geocod = v.geocod, name = v.name, value = v.value)
+end
+
+"""
+    parish_values(d::IndicatorData; period = nothing) -> NamedTuple
+
+As [`municipal_values`](@ref), for the parishes (freguesias): the rows keyed by
+DICOFRE and sorted by it, as a column table with `dicofre`, `geocod`, `name`
+and `value`. Both INE forms are read: the 9-character code with its NUTS III
+prefix, and the bare 6-digit DICOFRE of the Census 2021 indicators.
+
+INE publishes its parish figures on the parish map of the **2013 reform**
+(3,092 parishes, 2,882 on the mainland), up to the 2024 reference period. The
+parishes restored in 2025 are on CAOP2024.1 and later, not on this map, so join
+these values to CAOP2024 or earlier.
+
+A cell INE suppresses stays `missing`. For some indicators that is most of the
+country: the median declared income net of tax (0012757) has a value for 735 of
+the 2,882 mainland parishes in 2024, while the mean gross declared income
+(0012748) has all 2,882.
+"""
+function parish_values(d::IndicatorData; period = nothing)
+    v = _unit_values(d, :parish; period)
+    return (dicofre = v.key, geocod = v.geocod, name = v.name, value = v.value)
+end
+
+# The rows of one level, keyed by that level's code and sorted by it.
+function _unit_values(d::IndicatorData, level::Symbol; period = nothing)
+    level in (:municipality, :parish) || throw(ArgumentError(
+        "level must be :municipality or :parish, got $(repr(level))"))
+    keyname, isunit, keyof, unit = level === :municipality ?
+        ("DICO", ismunicipality, dico, "municipal") :
+        ("DICOFRE", isparish, dicofre, "parish")
     t = d.table
     if period === nothing
         length(d.periods) == 1 || throw(ArgumentError(
@@ -715,24 +749,27 @@ function municipal_values(d::IndicatorData; period = nothing)
         "period $(repr(p)) is not in this data; it has " *
         join(d.periods, ", ") * "."))
 
-    keep = findall(i -> t.period[i] == p && ismunicipality(t.geocod[i]),
+    keep = findall(i -> t.period[i] == p && isunit(t.geocod[i]),
                    eachindex(t.geocod))
     isempty(keep) && throw(ArgumentError(
-        "no municipal rows in $(d.varcd) for period $(repr(p)). The indicator " *
-        "may not be published below NUTS III; the catalogue's geo_lastlevel " *
+        "no $unit rows in $(d.varcd) for period $(repr(p)). The indicator " *
+        "may not be published at that level; the catalogue's geo_lastlevel " *
         "says so without a download."))
 
-    ds = [dico(t.geocod[i]) for i in keep]
+    ds = [keyof(t.geocod[i]) for i in keep]
     if length(unique(ds)) != length(ds)
         dup = sort(unique([x for x in ds if count(==(x), ds) > 1]))
         throw(ArgumentError(
-            "DICO is not unique in this slice: " * join(dup, ", ") *
-            ". That means more than one row per municipality, so a dimension " *
-            "beyond period and geography is still unfiltered."))
+            "$keyname is not unique in this slice: " * join(first(dup, 10), ", ") *
+            (length(dup) > 10 ? ", ..." : "") *
+            ". That means more than one row per unit, so a dimension " *
+            "beyond period and geography is still unfiltered" *
+            " (pass `dimensions` to `indicator_data`; the Census 2021 " *
+            "indicators have a Sex dimension, for instance)."))
     end
 
     perm = sortperm(ds)
-    return (dico = ds[perm],
+    return (key = ds[perm],
             geocod = [t.geocod[i] for i in keep][perm],
             name = [t.geodsg[i] for i in keep][perm],
             value = [t.value[i] for i in keep][perm])

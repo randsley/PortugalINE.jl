@@ -73,7 +73,12 @@ end
 
 @testset "a code of unknown shape is refused, not guessed" begin
     @test_throws ArgumentError geolevel("")
-    @test_throws ArgumentError geolevel("1234")
+    # "1234" was refused here until the Census 2021 indicators showed that INE
+    # issues bare 4-digit DICOs (and bare 6-character DICOFREs); a bare code
+    # with a letter in the wrong place is still refused.
+    @test geolevel("1234") == MUNICIPALITY
+    @test_throws ArgumentError geolevel("12A4")
+    @test_throws ArgumentError geolevel("12A456")
     @test_throws ArgumentError geolevel("12345678")
     # Level-specific accessors refuse the wrong level by name.
     @test_throws ArgumentError dico("11D")
@@ -101,6 +106,10 @@ end
 
 @testset "4. the join" begin
     include("test_join.jl")
+end
+
+@testset "5. parishes" begin
+    include("test_parishes.jl")
 end
 
 end

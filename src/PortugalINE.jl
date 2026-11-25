@@ -29,14 +29,14 @@ export MunicipalDataset, join_municipal, spatial_weights, model_matrix,
 export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
        CatalogueEntry,
        indicator_metadata, indicator_data, catalogue, catalogue_entry,
-       municipal_values, period_code, periods, ismunicipal, search_catalogue,
+       municipal_values, parish_values, period_code, periods, ismunicipal, search_catalogue,
        ine_cache_dir, clear_ine_cache!, cache_response!, ine_citation,
        parse_value
 export MunicipalBoundaries, CAOP_ATTRIBUTION,
        read_caop_geojson, contiguity, neighbour_lists, centroids,
        knn_contiguity, write_gal
-export GeoLevel, COUNTRY, NUTS1, NUTS2, NUTS3, MUNICIPALITY,
-       geolevel, isnuts3, ismunicipality, dico, nuts3, district,
+export GeoLevel, COUNTRY, NUTS1, NUTS2, NUTS3, MUNICIPALITY, PARISH,
+       geolevel, isnuts3, ismunicipality, isparish, dico, dicofre, nuts3, district,
        ismainland, isisland
 
 end # module

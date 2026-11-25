@@ -55,9 +55,9 @@ using SparseArrays
 using Printf: @sprintf, @printf
 
 using ..Codes: isisland
-using ..Indicators: IndicatorData, municipal_values
+using ..Indicators: IndicatorData, _unit_values
 using ..Boundaries: MunicipalBoundaries, contiguity, neighbour_lists, centroids,
-                    write_gal, CAOP_ATTRIBUTION
+                    write_gal, CAOP_ATTRIBUTION, _noun
 
 import ..Indicators: ine_citation
 
@@ -67,12 +67,12 @@ export MunicipalDataset, join_municipal, spatial_weights, model_matrix,
 """
     MunicipalDataset
 
-One row per municipality, aligned with a contiguity structure over exactly
-those municipalities.
+One row per municipality (or parish), aligned with a contiguity structure over
+exactly those units. The level is the boundaries' own: `ds.boundaries.level`.
 
 | field | what |
 |---|---|
-| `dico` | the join key, sorted; the row order of everything else |
+| `dico` | the join key, sorted; the row order of everything else. For parishes it holds the DICOFRE |
 | `name` | the municipality name |
 | `columns` | a `NamedTuple` of one `Vector{Union{Float64, Missing}}` per indicator |
 | `nuts` | a `NamedTuple` of the NUTS codes each indicator supplied, as a vintage record |
@@ -138,10 +138,11 @@ notes(ds::MunicipalDataset) = ds.notes
 
 function Base.show(io::IO, ::MIME"text/plain", ds::MunicipalDataset)
     deg = vec(sum(ds.adjacency; dims = 2))
-    println(io, "MunicipalDataset: ", length(ds), " municipalities, ",
+    println(io, "MunicipalDataset: ", length(ds), " ", _noun(ds.boundaries.level, length(ds)), ", ",
             length(ds.columns), " indicator",
             length(ds.columns) == 1 ? "" : "s")
-    println(io, "  key       dico, sorted; rows match `adjacency` and `boundaries`")
+    println(io, "  key       ", ds.boundaries.level === :parish ? "dicofre" : "dico",
+            ", sorted; rows match `adjacency` and `boundaries`")
     print(io, "  columns  ")
     for k in keys(ds.columns)
         nm = count(ismissing, ds.columns[k])
@@ -165,13 +166,17 @@ function Base.show(io::IO, ::MIME"text/plain", ds::MunicipalDataset)
 end
 
 Base.show(io::IO, ds::MunicipalDataset) =
-    print(io, "MunicipalDataset(", length(ds), " municipalities, ",
+    print(io, "MunicipalDataset(", length(ds), " ", _noun(ds.boundaries.level, length(ds)), ", ",
           length(ds.columns), " indicators, ", ds.criterion, ")")
 
 # A spec is `:name => data` or `:name => (data, period)`. The resolved period
 # comes back with it, because an extract covering several periods is reduced to
 # one here and recording all of them would overstate what the column holds.
-function _reduce_spec(spec::Pair)
+_values(d, level; period = nothing) =
+    (v = _unit_values(d, level; period);
+     (dico = v.key, geocod = v.geocod, name = v.name, value = v.value))
+
+function _reduce_spec(spec::Pair, level::Symbol)
     nm = first(spec)
     nm isa Symbol || throw(ArgumentError(
         "each indicator needs a Symbol column name, as `:density => data`; " *
@@ -183,9 +188,9 @@ function _reduce_spec(spec::Pair)
             "($(join(v.periods, ", "))); give it as " *
             "`$(repr(nm)) => (data, period)` so the column records which one " *
             "it holds."))
-        return nm, v, only(v.periods), municipal_values(v)
+        return nm, v, only(v.periods), _values(v, level)
     elseif v isa Tuple{IndicatorData, Any}
-        return nm, v[1], String(v[2]), municipal_values(v[1]; period = v[2])
+        return nm, v[1], String(v[2]), _values(v[1], level; period = v[2])
     else
         throw(ArgumentError(
             "the value of $(repr(nm)) must be an IndicatorData, or a tuple " *
@@ -199,6 +204,9 @@ end
 
 Join one or more indicator extracts to boundaries on DICO, and build a
 contiguity structure over the municipalities present in all of them.
+
+Boundaries read with `level = :parish` are joined on DICOFRE instead, to the
+parish rows of each extract (see [`parish_values`](@ref)); the rest is the same.
 
 Each `spec` is `:column_name => data`, or `:column_name => (data, period)` when
 the extract covers more than one period.
@@ -227,7 +235,7 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
 
     cols = Symbol[]; sources = IndicatorData[]; pers = String[]; reduced = []
     for s in specs
-        nm, data, per, m = _reduce_spec(s)
+        nm, data, per, m = _reduce_spec(s, b.level)
         nm in cols && throw(ArgumentError(
             "column $(repr(nm)) was given twice."))
         push!(cols, nm); push!(sources, data); push!(pers, per); push!(reduced, m)
@@ -249,7 +257,7 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
     end
     common = sort(collect(keep))
     isempty(common) && throw(ArgumentError(
-        "no municipality is present in both the boundaries and every " *
+        "no " * _noun(b.level, 1) * " is present in both the boundaries and every " *
         "indicator. The boundaries hold $(length(bcodes)) codes such as " *
         "$(join(first(sort(bcodes), 3), ", ")) and the first indicator holds " *
         "$(length(reduced[1].dico)) such as " *
@@ -263,8 +271,8 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
         gone = sort(setdiff(bcodes, m.dico))
         isempty(gone) && continue
         union!(dropped_geom, gone)
-        push!(note, string(length(gone), " municipalit",
-                           length(gone) == 1 ? "y has" : "ies have",
+        push!(note, string(length(gone), " ", _noun(b.level, length(gone)),
+                           length(gone) == 1 ? " has" : " have",
                            " boundaries but no ", nm, " value",
                            length(gone) <= 8 ? ": " * join(gone, ", ") : ""))
     end
@@ -283,14 +291,14 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
     dropped_data = [d for d in nogeom if !get(island_lookup, d, false)]
     if !isempty(dropped_islands)
         push!(note, string(length(dropped_islands),
-                           " island municipalities have data but no boundary, ",
+                           " island ", _noun(b.level, 2), " have data but no boundary, ",
                            "which is expected: CAOP serves Madeira and the ",
                            "Azores as separate collections and they have no ",
                            "land neighbours in any case"))
     end
     if !isempty(dropped_data)
-        push!(note, string(length(dropped_data), " non-island municipalit",
-                           length(dropped_data) == 1 ? "y has" : "ies have",
+        push!(note, string(length(dropped_data), " non-island ", _noun(b.level, length(dropped_data)),
+                           length(dropped_data) == 1 ? " has" : " have",
                            " data but no boundary",
                            length(dropped_data) <= 8 ? ": " * join(dropped_data, ", ") : "",
                            ". Expected if the boundaries are a deliberate ",
@@ -332,15 +340,22 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
     # NUTS vintages. Two extracts giving different codes for the same
     # municipality is the whole argument for keying on the DICO, so say so with
     # the count rather than leaving it to be rediscovered.
+    keyname = b.level === :parish ? "DICOFRE" : "DICO"
     for i in 2:length(nutscols)
         same = count(j -> nutscols[i][j] == nutscols[1][j], eachindex(common))
         same == length(common) && continue
-        push!(note, string(cols[i], " reports a different NUTS code from ",
+        bare = count(j -> length(nutscols[i][j]) != length(nutscols[1][j]), eachindex(common))
+        why = bare == length(common) ?
+            "because one gives the bare code with no NUTS prefix (the Census 2021 form)" :
+            "so the two were published on different NUTS vintages"
+        push!(note, string(cols[i], " reports a different ",
+                           bare == length(common) ? "geography" : "NUTS", " code from ",
                            cols[1], " for ", length(common) - same, " of ",
-                           length(common), " municipalities, so the two were ",
-                           "published on different NUTS vintages. The DICO ",
-                           "join matched all ", length(common),
-                           "; a join on the NUTS code would have matched ",
+                           length(common), " ", _noun(b.level, length(common)),
+                           ", ", why, ". The ", keyname,
+                           " join matched all ", length(common),
+                           "; a join on the ", bare == length(common) ? "geography" : "NUTS",
+                           " code would have matched ",
                            same))
     end
 
@@ -348,7 +363,7 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
     # exactly those units.
     bi = Dict(bcodes[i] => i for i in eachindex(bcodes))
     pick = [bi[d] for d in common]
-    bsub = MunicipalBoundaries(b.codes[pick], b.names[pick], b.rings[pick])
+    bsub = MunicipalBoundaries(b.codes[pick], b.names[pick], b.rings[pick], b.level)
     A = contiguity(bsub; criterion, standardize = false)
 
     deg = vec(sum(A; dims = 2))
@@ -424,12 +439,12 @@ function model_matrix(ds::MunicipalDataset, y::Symbol, xs::Symbol...;
     keep = [i for i in eachindex(ds.dico)
             if all(!ismissing(ds.columns[c][i]) for c in used)]
     isempty(keep) && throw(ArgumentError(
-        "no municipality has a value for all of " * join(used, ", ") * "."))
+        "no " * _noun(ds.boundaries.level, 1) * " has a value for all of " * join(used, ", ") * "."))
     gone = ds.dico[setdiff(eachindex(ds.dico), keep)]
 
     bsub = MunicipalBoundaries(ds.boundaries.codes[keep],
                                ds.boundaries.names[keep],
-                               ds.boundaries.rings[keep])
+                               ds.boundaries.rings[keep], ds.boundaries.level)
     A = contiguity(bsub; criterion = ds.criterion, standardize = false)
     deg = vec(sum(A; dims = 2))
     if standardize
@@ -502,13 +517,16 @@ and a credit that lives only in a README travels badly.
 """
 function write_dataset(dir::AbstractString, ds::MunicipalDataset;
                        name::AbstractString = "portugal_municipalities",
-                       gal::Bool = true, centroids_file::Bool = true)
+                       gal::Bool = true, centroids_file::Bool = true,
+                       coordinate_names::Tuple{String, String} = ("lon", "lat"))
     mkpath(dir)
     written = String[]
+    par = ds.boundaries.level === :parish
+    keyname = par ? "dicofre" : "dico"
 
     csv = joinpath(dir, name * ".csv")
     open(csv, "w") do io
-        println(io, "dico,name,", join(keys(ds.columns), ","))
+        println(io, keyname, ",name,", join(keys(ds.columns), ","))
         for i in eachindex(ds.dico)
             print(io, ds.dico[i], ",", _csv_field(ds.name[i]))
             for k in keys(ds.columns)
@@ -530,7 +548,7 @@ function write_dataset(dir::AbstractString, ds::MunicipalDataset;
         C = centroids(ds.boundaries)
         c = joinpath(dir, name * "_centroids.csv")
         open(c, "w") do io
-            println(io, "dico,name,lon,lat")
+            println(io, keyname, ",name,", coordinate_names[1], ",", coordinate_names[2])
             for i in eachindex(ds.dico)
                 @printf(io, "%s,%s,%.6f,%.6f\n", ds.dico[i],
                         _csv_field(ds.name[i]), C[i, 1], C[i, 2])
@@ -556,14 +574,25 @@ function write_dataset(dir::AbstractString, ds::MunicipalDataset;
         println(io)
         println(io, "## Units")
         println(io)
-        println(io, "**", length(ds), " municipalities**, keyed and ordered by DICO,")
-        println(io, "the official district-and-municipality code. Every file here uses")
-        println(io, "that order, so they line up by sorting alone.")
-        println(io)
-        println(io, "The key is the DICO and not INE's `geocod` because the NUTS code")
-        println(io, "changes between vintages while the DICO does not, and not the name")
-        println(io, "because `Calheta` names two municipalities, 3101 in Madeira and")
-        println(io, "4501 in the Azores.")
+        if par
+            println(io, "**", length(ds), " parishes**, keyed and ordered by DICOFRE,")
+            println(io, "the official district, municipality and parish code (CAOP's")
+            println(io, "`dtmnfr`). Every file here uses that order, so they line up by")
+            println(io, "sorting alone.")
+            println(io)
+            println(io, "The key is the DICOFRE and not INE's `geocod` because the NUTS")
+            println(io, "prefix changes between vintages, and because the Census 2021")
+            println(io, "indicators give the bare DICOFRE with no prefix at all.")
+        else
+            println(io, "**", length(ds), " municipalities**, keyed and ordered by DICO,")
+            println(io, "the official district-and-municipality code. Every file here uses")
+            println(io, "that order, so they line up by sorting alone.")
+            println(io)
+            println(io, "The key is the DICO and not INE's `geocod` because the NUTS code")
+            println(io, "changes between vintages while the DICO does not, and not the name")
+            println(io, "because `Calheta` names two municipalities, 3101 in Madeira and")
+            println(io, "4501 in the Azores.")
+        end
         println(io)
         d = dropped(ds)
         println(io, "| dropped | count |")

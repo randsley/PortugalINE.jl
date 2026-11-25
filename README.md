@@ -39,6 +39,8 @@ the data made that unnecessary, and the reasoning is under
 | script | what |
 |---|---|
 | `build_notebook_dataset.jl` | the dataset SpatialEconometrics.jl's notebooks use: 308 attribute rows, mainland weights, one provenance file |
+| `build_parish_dataset.jl` | the 2,882 mainland parishes on the 2013 parish map: attributes, queen and rook GAL, centroids, provenance |
+| `caop_gpkg_to_geojson.py` | one CAOP GeoPackage layer to the GeoJSON `read_caop_geojson` reads (Python standard library only) |
 | `build_dataset.jl` | the general form -- any indicator list, straight through `join_municipal` and `write_dataset` |
 | `verify_against_reference.jl` | compares this package's output against a dataset produced some other way, value by value |
 
@@ -247,6 +249,43 @@ Lisboa's centroid against the city's real coordinates, which is how a
 factor-of-two error in the moment formula was caught: it had put every centroid
 at exactly half its true position, a pair of numbers that still looks plausible
 and would have fed a distance weighting without complaint.
+
+## Parishes
+
+Every layer also works one level down, on the parishes (freguesias):
+`isparish` and `dicofre` in layer 1, `parish_values` in layer 2,
+`read_caop_geojson(path; level = :parish)` in layer 3, and `join_municipal`,
+`model_matrix` and `write_dataset` follow the boundaries' level. The key is
+the **DICOFRE**, CAOP's `dtmnfr`: the DICO and two more characters.
+
+Four things were found on the data, on 2026-11-25, and are pinned in
+`test/test_parishes.jl`:
+
+- **Two parish maps.** INE publishes its parish figures on the map of the 2013
+  reform: 3,092 parishes, 2,882 on the mainland, up to the 2024 reference
+  period. Law 25-A/2025 restored 302 parishes, and CAOP2024.1 and CAOP2025
+  carry the new map (3,049 on the mainland). A join of INE's figures to the
+  current CAOP on `dtmnfr` loses the restored parishes and the dissolved
+  unions without an error. **CAOP2024** matches INE exactly: all 2,882 codes,
+  no name differing, and areas within a median 0.012% of INE's own. DGT's OGC
+  API serves only the current CAOP, so the older vintage comes from DGT's
+  GeoPackage downloads, through `scripts/caop_gpkg_to_geojson.py`. INE's area
+  indicator (0011866) lists both maps at once: 3,184 mainland codes, with no
+  value for the 302 restored parishes before 2025.
+- **Two code forms.** Most indicators give 9 characters, the NUTS III code and
+  the DICOFRE. The Census 2021 indicators give the bare code: 6 characters for
+  a parish and 4 for a municipality. `municipal_values` used to drop the bare
+  municipal rows and report that the indicator stopped at NUTS III.
+- **A DICOFRE is not always numeric.** Barcelos (0302) had more than 99
+  parishes and coded its eight 2013 unions `0302FA` to `0302FH`. A six-digit
+  check, the first version, dropped them.
+- **Suppression varies by indicator.** The median declared income net of tax
+  (0012757) has a value for 735 of the 2,882 mainland parishes in 2024; the
+  mean gross declared income (0012748) has all of them.
+
+On CAOP2024's parishes the hashing is still exact: rounding every vertex to the
+millimetre leaves the graph unchanged, and shapely 2.1 gives the same 8,409
+queen and 8,283 rook links, link for link.
 
 ## Geography and provenance
 
