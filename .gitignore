@@ -6,3 +6,4 @@ Manifest.toml
 *.jl.mem
 .DS_Store
 /data/cache/
+__pycache__/
