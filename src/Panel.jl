@@ -25,7 +25,7 @@ extract or period is a real gap, and is named.
 Units are kept whatever their values; a suppressed cell stays `missing` in its
 column. [`panel_matrices`](@ref) then keeps the units complete in every column
 and period it is asked for, and rebuilds `W` over them, for the same reason
-[`model_matrix`](@ref) does: a standardised matrix is valid only for the units
+[`model_matrix`](@ref PortugalINE.Join.model_matrix) does: a standardised matrix is valid only for the units
 it was computed over.
 """
 module Panel

@@ -8,3 +8,6 @@ Manifest.toml
 /data/cache/
 __pycache__/
 CLAUDE.md
+
+/docs/build/
+/docs/Manifest.toml

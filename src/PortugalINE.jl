@@ -34,7 +34,7 @@ export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
        CatalogueEntry,
        indicator_metadata, indicator_data, catalogue, catalogue_entry,
        municipal_values, parish_values, period_code, periods, ismunicipal, search_catalogue,
-       ine_cache_dir, clear_ine_cache!, cache_response!, ine_citation,
+       ine_cache_dir, clear_ine_cache!, cache_response!, cache_max_age, ine_citation,
        parse_value
 export MunicipalBoundaries, CAOP_ATTRIBUTION,
        read_caop_geojson, contiguity, neighbour_lists, centroids,

@@ -72,7 +72,18 @@ def gpkg_geometry(blob):
 
 
 def main(path, layer, out):
+    # Closed on every path: on Windows an open connection keeps the file locked.
     con = sqlite3.connect(path)
+    try:
+        fc, srs = _layer(con, path, layer)
+    finally:
+        con.close()
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(fc, f, ensure_ascii=False)
+    print(f"wrote {len(fc['features'])} features from {layer} (EPSG:{srs}) to {out}")
+
+
+def _layer(con, path, layer):
     tables = [r[0] for r in con.execute("select table_name from gpkg_contents")]
     if layer not in tables:
         raise SystemExit(f"no layer {layer!r} in {path}; it has {tables}")
@@ -89,9 +100,7 @@ def main(path, layer, out):
     fc = {"type": "FeatureCollection",
           "crs": {"type": "name", "properties": {"name": f"urn:ogc:def:crs:EPSG::{srs}"}},
           "features": feats}
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump(fc, f, ensure_ascii=False)
-    print(f"wrote {len(feats)} features from {layer} (EPSG:{srs}) to {out}")
+    return fc, srs
 
 
 if __name__ == "__main__":

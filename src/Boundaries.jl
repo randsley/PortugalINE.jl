@@ -172,8 +172,8 @@ later.
 
 With `level = :parish` the defaults are `code_property = "dtmnfr"` and
 `name_property = "freguesia"`, and each code is checked to be a DICOFRE (four
-digits, then two digits or capital letters; see [`dicofre`](@ref)). DGT's API serves only the current CAOP, whose parish map is not the one
-INE publishes on (see [`parish_values`](@ref)); an older vintage comes as a
+digits, then two digits or capital letters; see [`dicofre`](@ref PortugalINE.Codes.dicofre)). DGT's API serves only the current CAOP, whose parish map is not the one
+INE publishes on (see [`parish_values`](@ref PortugalINE.Indicators.parish_values)); an older vintage comes as a
 GeoPackage, which `scripts/caop_gpkg_to_geojson.py` converts to this format with
 the coordinates unchanged.
 
@@ -183,7 +183,7 @@ gigabytes of transient memory.
 
 The result records where it came from: the file name, the SHA-256 of its bytes,
 and `edition` if given (`edition = "CAOP2024"`). The file does not say which
-CAOP edition it is, so state it; [`write_dataset`](@ref) writes all three into
+CAOP edition it is, so state it; [`write_dataset`](@ref PortugalINE.Join.write_dataset) writes all three into
 the provenance file.
 """
 function read_caop_geojson(path::AbstractString;

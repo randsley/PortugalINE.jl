@@ -32,3 +32,19 @@ jobs:
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+  converter:
+    # scripts/caop_gpkg_to_geojson.py, standard library only. Windows matters:
+    # an open SQLite connection locks the GeoPackage there and not on Linux.
+    name: GeoPackage converter - Python ${{ matrix.python }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.x']
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s test/python -v

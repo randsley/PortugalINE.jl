@@ -104,6 +104,7 @@ end
     @test ds.columns.income[7] == 17156.0 && ds.columns.unemployment[7] == 8.3
     @test length(dropped(ds).islands) == 210
     @test length(dropped(ds).data) == 2872
+    @test isempty(dropped(ds).empty)
     @test any(n -> occursin("bare code with no NUTS prefix", n), notes(ds))
     @test !any(n -> occursin("NUTS vintages", n), notes(ds))
     @test occursin("10 parishes", sprint(show, MIME("text/plain"), ds))
@@ -141,6 +142,29 @@ end
          value = Union{Float64, Missing}[295.0, 3.0, 7.0])
     pv = parish_values(PortugalINE.IndicatorData("0008234", "births", ["2023"], "", "", t))
     @test pv.dicofre == ["110601", "130741"]
+end
+
+@testset "a unit of another map, listed with no value, is not a missing boundary" begin
+    # 0011866 (area) lists the 302 parishes restored in 2025 beside the 2,882 of
+    # the 2013 map, with no value before 2025. 999901 stands for one of them.
+    function area(extra)
+        t = (period = fill("2021", 10 + length(extra)),
+             geocod = ["170" * c for c in [b10.codes; extra]],
+             geodsg = [b10.names; ["restored $c" for c in extra]],
+             value = Union{Float64, Missing}[collect(1.0:10.0); [missing for _ in extra]])
+        PortugalINE.IndicatorData("0011866", "area", ["2021"], "", "2026-11-26", t)
+    end
+    ds = join_municipal(b10, :area => area(["111699"]))
+    @test length(ds) == 10
+    @test dropped(ds).empty == ["111699"] && isempty(dropped(ds).data)
+    @test any(n -> occursin("units of another map", n), notes(ds))
+    # With a value, the same row is a unit missing its boundary, which is not expected.
+    d = area(["111699"]); d.table.value[end] = 2.5
+    ds = join_municipal(b10, :area => d)
+    @test dropped(ds).data == ["111699"] && isempty(dropped(ds).empty)
+    md = read(joinpath(write_dataset(mktempdir(), join_municipal(b10, :area => area(["111699"]));
+                                     name = "t", gal = false, centroids_file = false)[end]), String)
+    @test occursin("| units of another map (no value, no boundary) | 1 |", md)
 end
 
 @testset "INE's pseudo-units are not places, at any level" begin

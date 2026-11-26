@@ -1,0 +1,9 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+PortugalINE = "646e5d9a-f2d8-4195-ba6d-f88b8c418462"
+
+[sources]
+PortugalINE = {path = ".."}
+
+[compat]
+Documenter = "1"

@@ -444,6 +444,46 @@ end
     end
 end
 
+@testset "max_age: stale responses are refetched, and kept if INE is down" begin
+    I = PortugalINE.Indicators
+    furl(p) = "file:///" * lstrip(replace(p, '\\' => '/'), '/')
+    src = mktempdir(); good = joinpath(src, "meta.json"); cp(F_META, good)
+    u = furl(good)
+    parse_meta(b) = I._parse_metadata(I._json_ok(b, u), u)
+    saved = copy(I.RETRY_DELAYS[]); I.RETRY_DELAYS[] = Float64[]
+    try
+        c = mktempdir()
+        # An altered body in the cache stands for an old response.
+        old = replace(read(F_META, String), "\"PrimeiroPeriodo\" : \"2023\"" =>
+                                            "\"PrimeiroPeriodo\" : \"1999\"")
+        I._store(old, u, c)
+        # Never expires by default: the cached body wins, however old.
+        @test _fetch(parse_meta, u; cache = c, timeout = 10).first_period == "1999"
+        # Older than max_age: fetched again, and the cache now holds the new body.
+        sleep(0.05)
+        @test _fetch(parse_meta, u; cache = c, timeout = 10, max_age = 0).first_period == "2023"
+        @test read(_cache_file(u, c), String) == read(F_META, String)
+        # Stale and INE unreachable: the stale body, with a warning, not an error.
+        I._store(old, u, c); rm(good); sleep(0.05)
+        r = @test_logs (:warn, r"returning the cached response") begin
+            _fetch(parse_meta, u; cache = c, timeout = 10, max_age = 0)
+        end
+        @test r.first_period == "1999"
+        # The environment sets the default, and a bad value is refused.
+        withenv("PORTUGALINE_CACHE_MAX_AGE" => "3600") do
+            @test cache_max_age() == 3600.0
+        end
+        withenv("PORTUGALINE_CACHE_MAX_AGE" => "soon") do
+            @test_throws ArgumentError cache_max_age()
+        end
+        withenv("PORTUGALINE_CACHE_MAX_AGE" => nothing) do
+            @test cache_max_age() == Inf
+        end
+    finally
+        I.RETRY_DELAYS[] = saved
+    end
+end
+
 @testset "an extra dimension stays on its own row when a row lacks it" begin
     # Row B has no dim_3. Padding once per period used to move C's "H" onto B.
     body = """{"IndicadorCod":"0000001","Sucesso":{"Verdadeiro":[]},"Dados":{"2022":[

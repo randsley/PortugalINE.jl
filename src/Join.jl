@@ -27,7 +27,7 @@ Azores — so a name join is ambiguous rather than merely incomplete.
 
 The DICO is the last four characters of either code, and it is stable because
 it is the official district-and-municipality number rather than a statistical
-grouping. [`municipal_values`](@ref) keys on it, this layer joins on it, and
+grouping. [`municipal_values`](@ref PortugalINE.Indicators.municipal_values) keys on it, this layer joins on it, and
 the GAL files from [`write_gal`](@ref) are ordered by it, so the data and the
 matrix line up without a lookup table.
 
@@ -110,7 +110,18 @@ struct MunicipalDataset
     filters::Vector{Dict{Int, String}}
     languages::Vector{String}
     column_extracted::Vector{String}
+    # Data with no boundary and no value: units of another map (see `dropped`).
+    dropped_empty::Vector{String}
 end
+
+# Before `dropped_empty` existed: nothing classified as another map's.
+MunicipalDataset(dico, name, columns, nuts, boundaries, adjacency, criterion,
+                 varcds, periods, extracted, dropped_geometry, dropped_data,
+                 dropped_islands, notes, filters, languages, column_extracted) =
+    MunicipalDataset(dico, name, columns, nuts, boundaries, adjacency, criterion,
+                     varcds, periods, extracted, dropped_geometry, dropped_data,
+                     dropped_islands, notes, filters, languages, column_extracted,
+                     String[])
 
 # Without the request record, as a dataset built by hand has it: no filter, no
 # language, and the dataset-wide extraction date for every column.
@@ -134,8 +145,11 @@ Base.length(ds::MunicipalDataset) = length(ds.dico)
 
 What the join left out, as three vectors of DICO codes: `geometry` (a boundary
 with no data in some indicator), `data` (data with no boundary, excluding
-islands) and `islands` (data with no boundary because the unit is in Madeira or
-the Azores, which CAOP serves as separate collections).
+islands, with a value), `islands` (data with no boundary because the unit is in
+Madeira or the Azores, which CAOP serves as separate collections), and `empty`
+(listed in the data with no value and no boundary: units of another map, as the
+area indicator 0011866 lists the 302 parishes restored in 2025 beside the 2,882
+of the 2013 map).
 
 The split matters. Islands dropping out is expected and is not a fault. A
 mainland municipality dropping out means the extracts disagree about what
@@ -144,7 +158,8 @@ estimates are believed.
 """
 dropped(ds::MunicipalDataset) = (geometry = ds.dropped_geometry,
                                  data = ds.dropped_data,
-                                 islands = ds.dropped_islands)
+                                 islands = ds.dropped_islands,
+                                 empty = ds.dropped_empty)
 
 """
     notes(ds) -> Vector{String}
@@ -226,7 +241,7 @@ Join one or more indicator extracts to boundaries on DICO, and build a
 contiguity structure over the municipalities present in all of them.
 
 Boundaries read with `level = :parish` are joined on DICOFRE instead, to the
-parish rows of each extract (see [`parish_values`](@ref)); the rest is the same.
+parish rows of each extract (see [`parish_values`](@ref PortugalINE.Indicators.parish_values)); the rest is the same.
 
 Each `spec` is `:column_name => data`, or `:column_name => (data, period)` when
 the extract covers more than one period.
@@ -307,14 +322,22 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
         island_lookup[m.dico[i]] = get(island_lookup, m.dico[i], false) ||
                                    isisland(m.geocod[i])
     end
+    valued = Set(m.dico[i] for m in reduced for i in eachindex(m.dico) if !ismissing(m.value[i]))
     dropped_islands = [d for d in nogeom if get(island_lookup, d, false)]
-    dropped_data = [d for d in nogeom if !get(island_lookup, d, false)]
+    dropped_empty = [d for d in nogeom if !get(island_lookup, d, false) && !(d in valued)]
+    dropped_data = [d for d in nogeom if !get(island_lookup, d, false) && d in valued]
     if !isempty(dropped_islands)
         push!(note, string(length(dropped_islands),
                            " island ", _noun(b.level, 2), " have data but no boundary, ",
                            "which is expected: CAOP serves Madeira and the ",
                            "Azores as separate collections and they have no ",
                            "land neighbours in any case"))
+    end
+    if !isempty(dropped_empty)
+        push!(note, string(length(dropped_empty), " ", _noun(b.level, length(dropped_empty)),
+                           " listed in the data have no value and no boundary: units ",
+                           "of another map (INE's area indicator 0011866 lists the ",
+                           "302 parishes restored in 2025 alongside the 2013 map)"))
     end
     if !isempty(dropped_data)
         push!(note, string(length(dropped_data), " non-island ", _noun(b.level, length(dropped_data)),
@@ -407,7 +430,7 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
                             dropped_geom, dropped_data, dropped_islands, note,
                             [copy(s.dimensions) for s in sources],
                             [s.language for s in sources],
-                            [s.extracted for s in sources])
+                            [s.extracted for s in sources], dropped_empty)
 end
 
 """
@@ -619,7 +642,8 @@ function write_dataset(dir::AbstractString, ds::MunicipalDataset;
         println(io, "|---|---|")
         println(io, "| boundaries with no indicator value | ", length(d.geometry), " |")
         println(io, "| island units with no boundary | ", length(d.islands), " |")
-        println(io, "| other units with no boundary | ", length(d.data), " |")
+        println(io, "| units of another map (no value, no boundary) | ", length(d.empty), " |")
+        println(io, "| other units with values and no boundary | ", length(d.data), " |")
         println(io)
         println(io, "## Columns")
         println(io)

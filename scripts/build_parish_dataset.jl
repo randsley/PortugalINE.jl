@@ -38,7 +38,10 @@ const COLUMNS = [
     (:income_2021,  "0012748", "2021", Dict{Int, String}(), "EUR per taxpayer (gross declared income)"),
     (:unemployment, "0012328", "2021", Dict(3 => "T"), "% (Census 2021, both sexes)"),
     (:illiteracy,   "0012273", "2021", Dict(3 => "T"), "% (Census 2021, both sexes)"),
-    (:population,   "0012295", "2021", Dict(3 => "T", 4 => "T", 5 => "T"), "persons (Census 2021)"),
+    # 0012276 (sex x life-cycle age group), not 0012295 (sex x five-year age x
+    # ...): the totals are identical for all 2,882 parishes (checked
+    # 2026-11-26), and INE cannot serve 0012295 inside its gateway's 120 s.
+    (:population,   "0012276", "2021", Dict(3 => "T", 4 => "T"), "persons (Census 2021)"),
     (:quarters_density, "0012514", "2021", Dict{Int, String}(), "living quarters per km2 (Census 2021)"),
     (:area_km2,     "0011866", "2021", Dict{Int, String}(), "km2"),
 ]
@@ -48,16 +51,6 @@ fmt(v) = ismissing(v) ? "" :
          (v == round(v) && abs(v) < 1e15 ? string(Int(round(v))) : string(v))
 _today() = Base.Libc.strftime("%Y-%m-%d", time())
 csvf(s) = any(c -> c in (',', '"'), s) ? string('"', replace(s, '"' => "\"\""), '"') : s
-
-# The large Census requests are slow, hence the long timeout. Retries on a
-# reset connection or a malformed body happen inside the package
-# (`PortugalINE.Indicators.RETRY_DELAYS`).
-function fetch_values(code, period, dims)
-    ind = indicator_metadata(code)
-    d = indicator_data(code; period = period_code(ind, period), dimensions = dims,
-                       timeout = 600)
-    return ind, d, parish_values(d)
-end
 
 function main(args)
     length(args) == 2 || error("usage: build_parish_dataset.jl <output-dir> <caop2024_freguesias.json>")
@@ -73,52 +66,54 @@ function main(args)
             "indicator $code is published only to $(e.geo_lastlevel), not to parish level")
     end
 
+    # One request per indicator and filter, every period it is needed for in
+    # it. Retries on a reset connection, throttling or a malformed body happen
+    # inside the package (`PortugalINE.Indicators.RETRY_DELAYS`).
     @info "fetching indicators"
-    vals = Dict{Symbol, Dict{String, Union{Float64, Missing}}}()
-    titles = Dict{String, String}(); extracted = String[]
-    keys0 = String[]; names = Dict{String, String}(); extras = Dict{Symbol, Int}()
-    for (name, code, period, dims, _) in COLUMNS
-        ind, d, m = fetch_values(code, period, dims)
-        titles[code] = ind.name; push!(extracted, d.extracted)
-        keep = [i for i in eachindex(m.dicofre) if ismainland(m.dicofre[i])]
-        # Some indicators (the area, 0011866) list the parishes of both maps:
-        # the 2,882 of 2013 and the 302 restored in 2025, the latter with no
-        # value before 2025. Codes beyond the first indicator's set are dropped
-        # only if every one of them is empty; a value there is an error.
-        if !isempty(keys0) && length(keep) > NMAIN
-            inset = Set(keys0)
-            extra = [i for i in keep if !(m.dicofre[i] in inset)]
-            all(i -> ismissing(m.value[i]), extra) || error(
-                "indicator $code ($period) has values for parishes outside the 2013 map")
-            extras[name] = length(extra)
-            keep = [i for i in keep if m.dicofre[i] in inset]
-        end
-        ks = m.dicofre[keep]
-        length(ks) == NMAIN || error(
-            "indicator $code ($period) returned $(length(ks)) mainland parishes, not $NMAIN")
-        if isempty(keys0)
-            keys0 = ks
-            for i in keep; names[m.dicofre[i]] = m.name[i]; end
-        else
-            ks == keys0 || error("indicator $code has a different parish set")
-            nd = count(i -> m.name[i] != names[m.dicofre[i]], keep)
-            nd == 0 || @warn "parish names differ from the first indicator's; keeping the first" code n = nd
-        end
-        vals[name] = Dict(m.dicofre[i] => m.value[i] for i in keep)
-        @printf("  %-17s %s %s  %d parishes, %d missing\n", name, code, period, length(ks),
-                count(ismissing, m.value[keep]))
+    extracts = Dict{Tuple{String, Dict{Int, String}}, IndicatorData}()
+    for (code, dims) in unique((c[2], c[4]) for c in COLUMNS)
+        pers = [c[3] for c in COLUMNS if c[2] == code && c[4] == dims]
+        extracts[(code, dims)] = indicator_data(code; period = pers, dimensions = dims,
+                                                timeout = 600)
     end
+    specs = [name => (extracts[(code, dims)], period) for (name, code, period, dims, _) in COLUMNS]
+    titles = Dict(code => d.name for ((code, _), d) in extracts)
 
-    b = read_caop_geojson(args[2]; level = :parish, edition = "CAOP2024")
-    length(b) == NMAIN || error(
-        "expected the $NMAIN mainland parishes of CAOP2024, read $(length(b)). CAOP2024.1 " *
+    b0 = read_caop_geojson(args[2]; level = :parish, edition = "CAOP2024")
+    length(b0) == NMAIN || error(
+        "expected the $NMAIN mainland parishes of CAOP2024, read $(length(b0)). CAOP2024.1 " *
         "and CAOP2025 carry the 2025 parish map (3,049), which INE does not publish on.")
-    perm = sortperm(b.codes)
-    b = b[perm]
-    b.codes == keys0 || error(
-        "the boundary DICOFREs are not INE's mainland DICOFREs: " *
-        "$(length(setdiff(b.codes, keys0))) only in CAOP, $(length(setdiff(keys0, b.codes))) only in INE")
-    ndiffname = count(i -> b.names[i] != names[b.codes[i]], eachindex(b.codes))
+
+    # The join keeps the parishes in the boundaries and in every column, and
+    # classifies the rest. Islands are expected; so are the parishes of the
+    # 2025 map that the area indicator lists with no value. Anything else means
+    # the indicators and the boundaries disagree about which parishes exist.
+    ds = join_municipal(b0, specs...)
+    d = dropped(ds)
+    isempty(d.geometry) || error(
+        "$(length(d.geometry)) CAOP2024 parishes are missing from some indicator: " *
+        join(first(d.geometry, 8), ", "))
+    isempty(d.data) || error(
+        "$(length(d.data)) mainland parishes have values and no CAOP2024 boundary: " *
+        join(first(d.data, 8), ", "))
+    length(ds) == NMAIN || error("the join kept $(length(ds)) parishes, not $NMAIN")
+    foreach(n -> println("  note: ", n), notes(ds))
+
+    keys0 = ds.dico
+    b = ds.boundaries                       # ordered by DICOFRE, as keys0
+    names = Dict(zip(ds.dico, ds.name))     # INE's names, from the first column
+    extracted = ds.column_extracted
+    emptyset = Set(d.empty)
+    extras = Dict{Symbol, Int}()
+    for (name, code, period, dims, _) in COLUMNS
+        col = ds.columns[name]
+        ne = count(in(emptyset), parish_values(extracts[(code, dims)]; period).dicofre)
+        ne > 0 && (extras[name] = ne)
+        @printf("  %-17s %s %s  %d parishes, %d missing
+", name, code, period,
+                length(col), count(ismissing, col))
+    end
+    ndiffname = count(i -> b.names[i] != ds.name[i], eachindex(b.codes))
 
     # The planar-partition check, at parish level: rounding every vertex to the
     # millimetre must leave the graph unchanged, or the hashing is not exact.
@@ -144,11 +139,11 @@ function main(args)
     csv = joinpath(outdir, "portugal_parishes.csv")
     open(csv, "w") do io
         println(io, "dicofre,name,dico,district,district_name,", join((c[1] for c in COLUMNS), ","))
-        for k in keys0
+        for (i, k) in enumerate(keys0)
             dist = district(k)
             print(io, k, ",", csvf(names[k]), ",", k[1:4], ",", dist, ",", DISTRICT_NAMES[dist])
             for c in COLUMNS
-                print(io, ",", fmt(vals[c[1]][k]))
+                print(io, ",", fmt(ds.columns[c[1]][i]))
             end
             println(io)
         end

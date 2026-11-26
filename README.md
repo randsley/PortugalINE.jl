@@ -123,6 +123,21 @@ refusal is thrown at once. `cache_response!` seeds the cache from an archived
 body, which is how an extract gets frozen so a published number can be
 regenerated without the API.
 
+**The cache never expires, by default.** That is what keeps a frozen extract
+frozen; INE revises figures, and an expiring cache would silently replace the
+archived ones. To follow the revisions instead, set
+`ENV["PORTUGALINE_CACHE_MAX_AGE"]` (seconds) or pass `max_age` to any fetching
+function: an older response is fetched again, and if INE cannot be reached the
+old one is returned with a warning. A response's own date is `d.extracted`.
+
+**A slow answer is waited for, up to INE's own limit.** INE's gateway gives a
+request 120 seconds before answering 504, and a large Census response can take
+more than curl's default 20 seconds to start, so a transfer may be silent for
+120 seconds before it is abandoned. Some requests cannot be served inside that
+at all: the Census population 0012295 (sex, five-year age, birthplace) times
+out even fully filtered, while 0012276 (sex, life-cycle age) gives the same
+totals for every parish in seconds.
+
 ### Four things this API does that will catch you
 
 **`valor` is a string, and it is not the one that is displayed.** A row reads
@@ -509,7 +524,16 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  627    627
+PortugalINE   |  641    641
 ```
 
 Measured on Julia 1.13.4, 2026-11-26; CI runs 1.10 and the latest release.
+
+The GeoPackage converter has its own tests, standard library only, run in CI
+on Linux and Windows: `python -m unittest discover -s test/python`. They build
+GeoPackages byte by byte (both byte orders, every envelope size, holes,
+MultiPolygons) and check that coordinates survive bit for bit and that a
+feature it cannot decode fails the layer rather than vanishing from it.
+
+The manual (`julia --project=docs docs/make.jl`) runs the docstring doctests
+and fails on a broken cross-reference.

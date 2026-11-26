@@ -88,7 +88,7 @@ export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
        CatalogueEntry,
        indicator_metadata, indicator_data, catalogue, catalogue_entry,
        municipal_values, parish_values, period_code, periods, ismunicipal, search_catalogue,
-       ine_cache_dir, clear_ine_cache!, cache_response!, ine_citation,
+       ine_cache_dir, clear_ine_cache!, cache_response!, cache_max_age, ine_citation,
        parse_value
 
 const BASE = "https://www.ine.pt"
@@ -298,6 +298,30 @@ struct _MalformedResponse <: Exception
 end
 
 """
+    cache_max_age() -> Float64
+
+How old, in seconds, a cached response may be before it is fetched again:
+`ENV["PORTUGALINE_CACHE_MAX_AGE"]`, or `Inf`. Every fetching function also
+takes `max_age` to override it per call.
+
+The default is never to expire, deliberately: a cache seeded with
+[`cache_response!`](@ref) is how an extract is frozen so a published figure can
+be regenerated, and expiring it would silently replace the archived figures
+with INE's revised ones. Set a finite age to follow INE's revisions instead.
+When a stale response cannot be refreshed (INE down, or throttling), it is
+returned with a warning rather than an error. A response's own date is
+`extracted` on [`IndicatorData`](@ref) and `Indicator`, which INE stamps.
+"""
+function cache_max_age()
+    v = get(ENV, "PORTUGALINE_CACHE_MAX_AGE", "")
+    isempty(v) && return Inf
+    a = tryparse(Float64, v)
+    (a === nothing || a < 0) && throw(ArgumentError(
+        "PORTUGALINE_CACHE_MAX_AGE must be a number of seconds, got $(repr(v))."))
+    return a
+end
+
+"""
     RETRY_DELAYS
 
 The pauses, in seconds, before the second, third and later attempts at an INE
@@ -317,6 +341,23 @@ _retryable(e) = e isa _MalformedResponse ||
     (e isa Downloads.RequestError &&
      (e.response.status in (0, 404, 429) || e.response.status >= 500))
 
+# Downloads.jl gives up on a transfer that delivers nothing for 20 seconds,
+# curl's low-speed limit. INE's gateway allows a request 120 seconds before it
+# answers 504 (measured 2026-11-26 on the Census population 0012295, which INE
+# cannot serve within that even fully filtered), and a large response can take
+# longer than 20 to start. So the limit is INE's own: 120 seconds of silence.
+const _LOW_SPEED_TIME = 120
+const _DOWNLOADER = Ref{Union{Nothing, Downloads.Downloader}}(nothing)
+function _downloader()
+    if _DOWNLOADER[] === nothing
+        dl = Downloads.Downloader()
+        dl.easy_hook = (easy, info) ->
+            Downloads.Curl.setopt(easy, Downloads.Curl.CURLOPT_LOW_SPEED_TIME, _LOW_SPEED_TIME)
+        _DOWNLOADER[] = dl
+    end
+    return _DOWNLOADER[]
+end
+
 # Write through a temporary file and rename, so an interrupted write cannot
 # leave a truncated response behind to be trusted on the next call.
 function _store(body::AbstractString, url::AbstractString, cache::AbstractString)
@@ -333,25 +374,39 @@ end
 # would store an error message or a maintenance page and return it on every
 # later call, retries included. A cached body that no longer parses (written
 # before this check existed) is discarded and fetched again.
-function _fetch(parse, url::AbstractString; cache, timeout::Real)
+function _fetch(parse, url::AbstractString; cache, timeout::Real,
+                max_age::Real = cache_max_age())
+    stale = nothing
     if cache !== nothing
         path = _cache_file(url, cache)
         if isfile(path)
             try
-                return parse(read(path, String))
+                r = parse(read(path, String))
+                time() - mtime(path) <= max_age && return r
+                stale = r          # too old: refetch, and fall back to this
             catch e
                 e isa _MalformedResponse || rethrow()
                 rm(path; force = true)
             end
         end
     end
+    stale === nothing && return _download(parse, url; cache, timeout)
+    try
+        return _download(parse, url; cache, timeout)
+    catch e
+        @warn "INE request failed; returning the cached response, older than max_age" url exception = e
+        return stale
+    end
+end
+
+function _download(parse, url::AbstractString; cache, timeout::Real)
     delays = RETRY_DELAYS[]
     attempt = 0
     while true
         attempt += 1
         try
             body = sprint() do io
-                Downloads.download(url, io; timeout = float(timeout))
+                Downloads.download(url, io; timeout = float(timeout), downloader = _downloader())
             end
             result = parse(body)
             cache === nothing || _store(body, url, cache)
@@ -523,7 +578,8 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    indicator_metadata(varcd; language = "EN", cache = ine_cache_dir(), timeout = 120)
+    indicator_metadata(varcd; language = "EN", cache = ine_cache_dir(), timeout = 120,
+                       max_age = cache_max_age())
 
 Fetch an [`Indicator`](@ref): its dimensions, and the codes each dimension
 accepts. Needed before a filtered data request, because the codes are not
@@ -536,11 +592,12 @@ length(ind.dimensions[2].categories) # 347
 ```
 """
 function indicator_metadata(varcd::AbstractString; language = "EN",
-                            cache = ine_cache_dir(), timeout::Real = 120)
+                            cache = ine_cache_dir(), timeout::Real = 120,
+                            max_age::Real = cache_max_age())
     v = _check_varcd(varcd)
     lang = _check_language(language)
     url = _meta_url(v, lang)
-    return _fetch(b -> _parse_metadata(_json_ok(b, url), url), url; cache, timeout)
+    return _fetch(b -> _parse_metadata(_json_ok(b, url), url), url; cache, timeout, max_age)
 end
 
 function _parse_metadata(obj, url::AbstractString)
@@ -645,7 +702,8 @@ end
 
 """
     indicator_data(varcd; period = nothing, dimensions = Dict(),
-                   language = "EN", cache = ine_cache_dir(), timeout = 300)
+                   language = "EN", cache = ine_cache_dir(), timeout = 300,
+                   max_age = cache_max_age())
 
 Fetch observations as an [`IndicatorData`](@ref).
 
@@ -673,7 +731,7 @@ metadata lists. The `period` column then distinguishes them.
 function indicator_data(varcd::AbstractString; period = nothing,
                         dimensions::AbstractDict = Dict{Int, String}(),
                         language = "EN", cache = ine_cache_dir(),
-                        timeout::Real = 300)
+                        timeout::Real = 300, max_age::Real = cache_max_age())
     v = _check_varcd(varcd)
     lang = _check_language(language)
 
@@ -697,7 +755,7 @@ function indicator_data(varcd::AbstractString; period = nothing,
         iscode(x) = occursin(r"^[A-Z][A-Z0-9]*$", x)
         meta = Ref{Union{Indicator, Nothing}}(nothing)
         getmeta() = (meta[] === nothing &&
-                     (meta[] = indicator_metadata(v; language = lang, cache, timeout)); meta[])
+                     (meta[] = indicator_metadata(v; language = lang, cache, timeout, max_age)); meta[])
         ps = if period === :all
             [c.code for c in only(d for d in getmeta().dimensions if d.number == 1).categories]
         elseif period isa Symbol
@@ -716,7 +774,7 @@ function indicator_data(varcd::AbstractString; period = nothing,
 
     dims = Dict{Int, String}(Int(k) => String(v) for (k, v) in dimensions)
     return _fetch(b -> _parse_data(_json_ok(b, url), url; language = lang, dimensions = dims),
-                  url; cache, timeout)
+                  url; cache, timeout, max_age)
 end
 
 function _parse_data(obj, url::AbstractString; language::AbstractString = "",
@@ -914,7 +972,8 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    catalogue(; language = "EN", cache = ine_cache_dir(), timeout = 300)
+    catalogue(; language = "EN", cache = ine_cache_dir(), timeout = 300,
+              max_age = cache_max_age())
 
 Every indicator in INE's main group, as [`CatalogueEntry`](@ref) values. One
 request of roughly 500 kB, against one request per indicator for the same
@@ -937,14 +996,16 @@ search_catalogue(cat, "poder de compra"; municipal_only = true)
 catalogue_entry("0014580").title             # "Per capita purchasing power"
 ```
 """
-function catalogue(; language = "EN", cache = ine_cache_dir(), timeout::Real = 300)
+function catalogue(; language = "EN", cache = ine_cache_dir(), timeout::Real = 300,
+                   max_age::Real = cache_max_age())
     lang = _check_language(language)
     url = _catalogue_url(lang)
-    return _fetch(b -> _parse_catalogue_response(b, url), url; cache, timeout)
+    return _fetch(b -> _parse_catalogue_response(b, url), url; cache, timeout, max_age)
 end
 
 """
-    catalogue_entry(varcd; language = "EN", cache = ine_cache_dir(), timeout = 120)
+    catalogue_entry(varcd; language = "EN", cache = ine_cache_dir(), timeout = 120,
+                    max_age = cache_max_age())
 
 The catalogue record for one indicator, including indicators outside the main
 group that [`catalogue`](@ref) does not list.
@@ -953,11 +1014,12 @@ Unlike [`catalogue`](@ref), this endpoint honours `language` throughout, so it
 is where an English title comes from.
 """
 function catalogue_entry(varcd::AbstractString; language = "EN",
-                         cache = ine_cache_dir(), timeout::Real = 120)
+                         cache = ine_cache_dir(), timeout::Real = 120,
+                         max_age::Real = cache_max_age())
     v = _check_varcd(varcd)
     lang = _check_language(language)
     url = _catalogue_url(lang; varcd = v)
-    es = _fetch(b -> _parse_catalogue_response(b, url), url; cache, timeout)
+    es = _fetch(b -> _parse_catalogue_response(b, url), url; cache, timeout, max_age)
     length(es) == 1 || throw(ArgumentError(
         "expected one catalogue entry for $v, parsed $(length(es)). URL: $url"))
     return only(es)
