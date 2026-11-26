@@ -484,6 +484,27 @@ end
     @test !I._retryable(ArgumentError("INE refused the request"))
 end
 
+@testset "several periods in one request" begin
+    # An unfiltered request gives only the latest period (INE's default,
+    # measured 2026-11-26), so several periods are asked for as one
+    # comma-separated Dim1. The fixture is 0008074, both sexes, 2021 and 2022.
+    c = mktempdir()
+    cache_response!(joinpath(FIX, "ine_data_0008074_T2021_2022.json"), :data, "0008074";
+                    period = "S7A2021,S7A2022", dimensions = Dict(3 => "T"), dir = c)
+    d = indicator_data("0008074"; period = ["S7A2021", "S7A2022"],
+                       dimensions = Dict(3 => "T"), cache = c)
+    @test d.periods == ["2021", "2022"]
+    @test occursin("&Dim1=S7A2021%2CS7A2022&Dim3=T", d.url)
+    @test length(d) == 2 * 344
+    @test length(municipal_values(d; period = "2021").dico) == 308
+    @test municipal_values(d; period = "2021").value != municipal_values(d; period = "2022").value
+    @test_throws ArgumentError municipal_values(d)          # two periods: choose one
+    # Refused before any request.
+    @test_throws ArgumentError indicator_data("0008074"; period = String[], cache = c)
+    @test_throws ArgumentError indicator_data("0008074"; period = ["S7A2021", "S7A2021"], cache = c)
+    @test_throws ArgumentError indicator_data("0008074"; period = :latest, cache = c)
+end
+
 @testset "the request is recorded with the data" begin
     d = indicator_data("0008074"; period = "S7A2022", dimensions = Dict(3 => "T"),
                        cache = CACHE)

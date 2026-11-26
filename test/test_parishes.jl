@@ -142,3 +142,27 @@ end
     pv = parish_values(PortugalINE.IndicatorData("0008234", "births", ["2023"], "", "", t))
     @test pv.dicofre == ["110601", "130741"]
 end
+
+@testset "INE's pseudo-units are not places, at any level" begin
+    # All of these were rows of live births (0008234) on 2026-11-26: abroad,
+    # unknown residence, and the total, each at every level of the hierarchy.
+    abroad = ["0", "00", "000", "0000000", "000000000", "YY"]
+    unknown = ["9", "99", "999", "9999999", "999999999"]
+    for c in [abroad; unknown; "T"]
+        @test ispseudo(c)
+        @test_throws ArgumentError geolevel(c)
+        @test !ismunicipality(c) && !isparish(c)
+    end
+    @test !isparish("999999") && !ismunicipality("9999")
+    # Real codes are untouched, the one-character NUTS I regions included.
+    for c in ["1", "2", "3", "11", "PT", "111", "11D", "1111601", "11C130741", "130741", "0302FA"]
+        @test !ispseudo(c)
+    end
+    @test geolevel("1") == NUTS1
+    t = (period = fill("2023", 4), geocod = ["999999999", "T", "0000000", "1111601"],
+         geodsg = ["Unknown", "Total", "Foreigner", "Arcos"],
+         value = Union{Float64, Missing}[0.0, 9.0, 3.0, 1.0])
+    d = PortugalINE.IndicatorData("0008234", "births", ["2023"], "", "", t)
+    @test municipal_values(d).dico == ["1601"]
+    @test_throws ArgumentError parish_values(d)            # no parish rows at all
+end

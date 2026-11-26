@@ -41,7 +41,7 @@ recovers its district.
 module Codes
 
 export GeoLevel, COUNTRY, NUTS1, NUTS2, NUTS3, MUNICIPALITY, PARISH,
-       geolevel, isnuts3, ismunicipality, isparish, dico, dicofre, nuts3, district,
+       geolevel, isnuts3, ismunicipality, isparish, ispseudo, dico, dicofre, nuts3, district,
        ismainland, isisland, DISTRICT_NAMES
 
 """
@@ -68,6 +68,11 @@ NUTS3::GeoLevel = 3
 ```
 """
 function geolevel(code::AbstractString)
+    ispseudo(code) && throw(ArgumentError(
+        "$(repr(code)) is not a place: INE uses it for " *
+        (code == "T" ? "the grand total" :
+         code == "YY" || all(==('0'), code) ? "residence abroad" : "unknown residence") *
+        " (see `ispseudo`)"))
     n = length(code)
     n == 7 && return MUNICIPALITY
     n == 9 && return PARISH
@@ -102,15 +107,29 @@ Whether `code` names one of the 308 municipalities: a 7-character code
 (letters in the NUTS III prefix included), or a bare 4-digit DICO.
 """
 ismunicipality(code::AbstractString) =
-    (length(code) == 7 || (length(code) == 4 && all(isdigit, code))) && !_isabroad(code, 4)
+    (length(code) == 7 || (length(code) == 4 && all(isdigit, code))) && !_nodistrict(code, 4)
 
-# INE codes residence abroad ("Estrangeiro") as an all-zero unit: `000000000`
-# and `000000` at parish level in 0008234 (live births), and the same pattern at
-# municipal level. District 00 does not exist, so these are not places in
-# Portugal, and `ismunicipality` and `isparish` reject them -- without this,
-# `ismainland` (district <= 18) took "abroad" for a mainland parish.
-_isabroad(code::AbstractString, n::Int) =
-    length(code) >= n && code[(end - n + 1):(end - n + 2)] == "00"
+"""
+    ispseudo(code) -> Bool
+
+Whether `code` is one of the rows INE adds that are not places. Live births
+(0008234) carries, at every level of the hierarchy: residence **abroad**
+("Estrangeiro", "Foreigner") as `0`, `00`, `000`, `0000000`, `000000000` and
+`YY`; **unknown** residence ("Ignorado", "Unknown") as `9`, `99`, `999`,
+`9999999`, `999999999`; and the grand total as `T`. Their lengths are those
+of real levels, so without this check `geolevel` would call `T` a NUTS I
+region and `000000000` a parish -- and `ismainland` took the abroad row for a
+mainland parish. [`geolevel`](@ref) refuses them, and [`ismunicipality`](@ref)
+and [`isparish`](@ref) reject them, so `municipal_values` and `parish_values`
+leave them out.
+"""
+ispseudo(code::AbstractString) =
+    code in ("T", "YY") || (!isempty(code) && (all(==('0'), code) || all(==('9'), code)))
+
+# District 00 (abroad) and 99 (unknown) do not exist; a municipality or parish
+# code carrying either is one of INE's pseudo-units, whatever its prefix.
+_nodistrict(code::AbstractString, n::Int) =
+    length(code) >= n && code[(end - n + 1):(end - n + 2)] in ("00", "99")
 
 # A DICOFRE is the DICO and two more characters. Those are digits for every
 # parish but the eight unions of the 2013 reform in Barcelos (DICO 0302), which
@@ -127,7 +146,7 @@ Whether `code` names a parish (freguesia): a 9-character code (NUTS III prefix
 plus DICOFRE) or a bare 6-character DICOFRE.
 """
 isparish(code::AbstractString) =
-    (length(code) == 9 || (length(code) == 6 && _isdicofre(code))) && !_isabroad(code, 6)
+    (length(code) == 9 || (length(code) == 6 && _isdicofre(code))) && !_nodistrict(code, 6)
 
 """
     isnuts3(code) -> Bool

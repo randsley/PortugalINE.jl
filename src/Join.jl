@@ -551,8 +551,7 @@ function write_dataset(dir::AbstractString, ds::MunicipalDataset;
         for i in eachindex(ds.dico)
             print(io, ds.dico[i], ",", _csv_field(ds.name[i]))
             for k in keys(ds.columns)
-                v = ds.columns[k][i]
-                print(io, ",", ismissing(v) ? "" : string(v))
+                print(io, ",", _num(ds.columns[k][i]))
             end
             println(io)
         end
@@ -676,6 +675,12 @@ function write_dataset(dir::AbstractString, ds::MunicipalDataset;
 
     return written
 end
+
+# A value as INE publishes it: a whole number without a decimal point (INE
+# gives "26", and writing 26.0 would change the file without changing the
+# data), anything else as Julia prints it, and a suppressed cell as empty.
+_num(v) = ismissing(v) ? "" :
+    (isfinite(v) && v == round(v) && abs(v) < 1e15 ? string(Int(round(v))) : string(v))
 
 # Minimal CSV quoting: municipality names carry commas in the disambiguated
 # island forms, such as "Calheta (R.A.M.)" -- which do not, but the Azorean

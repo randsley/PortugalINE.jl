@@ -649,8 +649,9 @@ end
 
 Fetch observations as an [`IndicatorData`](@ref).
 
-`period` filters `Dim1` and may be a code (`"S7A2023"`) or a label (`"2023"`);
-a label is translated, which costs one extra metadata request. `dimensions`
+`period` filters `Dim1` and may be a code (`"S7A2023"`), a label (`"2023"`), a
+vector of either, or `:all`; a label or `:all` costs one extra metadata
+request. `dimensions`
 filters the rest, as `Dict(3 => "T")` for `Dim3=T`. Filtering matters: an
 unfiltered multi-dimensional indicator is every period times every category,
 which for some indicators is tens of megabytes.
@@ -662,8 +663,12 @@ d.table.value[1]                 # 61.78
 d = indicator_data("0008074"; period = "2022", dimensions = Dict(3 => "T"))
 ```
 
-Omitting `period` returns every period the indicator has, with the `period`
-column distinguishing them.
+**Omitting `period` returns only the latest period**, not every period: that
+is INE's default, measured on 2026-11-26 for four indicators (0012748 gave
+2024 of 2018-2024; 0008234 gave 2023 of 2014-2023). For several periods in one
+request pass a vector, `period = ["2018", "2019"]` (labels or codes), which is
+sent as `Dim1=S7A2018,S7A2019`, or `period = :all` for every period the
+metadata lists. The `period` column then distinguishes them.
 """
 function indicator_data(varcd::AbstractString; period = nothing,
                         dimensions::AbstractDict = Dict{Int, String}(),
@@ -682,16 +687,30 @@ function indicator_data(varcd::AbstractString; period = nothing,
             "returned table instead, or use `municipal_values`."))
     end
 
+    # A label needs the metadata to become a code. A code is upper-case
+    # alphanumeric and contains a letter; a bare "2023" is a label. Only fetch
+    # the metadata when a translation can actually be needed, so the common
+    # case stays one request. Several periods go as one comma-separated Dim1,
+    # which INE accepts (`;` it refuses).
     p = nothing
     if period !== nothing
-        p = String(period)
-        # A label needs the metadata to become a code. A code is upper-case
-        # alphanumeric and contains a letter; a bare "2023" is a label. Only
-        # fetch the metadata when a translation can actually be needed, so the
-        # common case stays one request.
-        if !occursin(r"^[A-Z][A-Z0-9]*$", p)
-            p = period_code(indicator_metadata(v; language = lang, cache, timeout), p)
+        iscode(x) = occursin(r"^[A-Z][A-Z0-9]*$", x)
+        meta = Ref{Union{Indicator, Nothing}}(nothing)
+        getmeta() = (meta[] === nothing &&
+                     (meta[] = indicator_metadata(v; language = lang, cache, timeout)); meta[])
+        ps = if period === :all
+            [c.code for c in only(d for d in getmeta().dimensions if d.number == 1).categories]
+        elseif period isa Symbol
+            throw(ArgumentError("period may be a label, a code, a vector of them, or :all; " *
+                                "got $(repr(period))."))
+        else
+            [String(x) for x in (period isa AbstractVector ? period : [period])]
         end
+        isempty(ps) && throw(ArgumentError("period is an empty list."))
+        ps = [iscode(x) ? x : period_code(getmeta(), x) for x in ps]
+        length(unique(ps)) == length(ps) || throw(ArgumentError(
+            "a period is given twice: $(join(ps, ", "))."))
+        p = join(ps, ",")
     end
     url = _data_url(v, lang; period = p, dimensions)
 

@@ -23,9 +23,13 @@ using .Boundaries
 include("Join.jl")
 using .Join
 
-export Codes, Indicators, Boundaries, Join
+include("Panel.jl")
+using .Panel
+
+export Codes, Indicators, Boundaries, Join, Panel
 export MunicipalDataset, join_municipal, spatial_weights, model_matrix,
        write_dataset, dropped, notes
+export PanelDataset, join_panel, panel_matrices, write_panel
 export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
        CatalogueEntry,
        indicator_metadata, indicator_data, catalogue, catalogue_entry,
@@ -36,7 +40,7 @@ export MunicipalBoundaries, CAOP_ATTRIBUTION,
        read_caop_geojson, contiguity, neighbour_lists, centroids,
        knn_contiguity, write_gal
 export GeoLevel, COUNTRY, NUTS1, NUTS2, NUTS3, MUNICIPALITY, PARISH,
-       geolevel, isnuts3, ismunicipality, isparish, dico, dicofre, nuts3, district,
+       geolevel, isnuts3, ismunicipality, isparish, ispseudo, dico, dicofre, nuts3, district,
        ismainland, isisland
 
 end # module

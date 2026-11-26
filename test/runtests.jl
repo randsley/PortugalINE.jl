@@ -112,4 +112,8 @@ end
     include("test_parishes.jl")
 end
 
+@testset "6. panels" begin
+    include("test_panel.jl")
+end
+
 end

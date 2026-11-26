@@ -168,6 +168,32 @@ function check_extra_dimension()
     end
 end
 
+function check_periods()
+    # An unfiltered request gives the latest period only; several periods go as
+    # one comma-separated Dim1. `indicator_data`'s vector and :all forms, and
+    # the panel script, rely on both.
+    d = unwrap(fetch(_data_url("0012748", "EN")))
+    ks = String.(collect(keys(d.Dados)))
+    length(ks) == 1 ? ok("data 0012748 unfiltered: latest period only ($(only(ks)))") :
+        warn("data 0012748 unfiltered: now $(length(ks)) periods; the docs say latest only")
+    d = unwrap(fetch(_data_url("0012748", "EN"; period = "S7A2018,S7A2019")))
+    ks = haskey(d, :Dados) ? sort(String.(collect(keys(d.Dados)))) : String[]
+    ks == ["2018", "2019"] ? ok("data 0012748 Dim1=S7A2018,S7A2019: both periods") :
+        err("data 0012748 Dim1=S7A2018,S7A2019: got $(ks); a comma-separated Dim1 is " *
+            "how `indicator_data` asks for several periods")
+end
+
+function pseudo_check(d)
+    # Pseudo-units: abroad, unknown, total. They must stay recognisable.
+    codes = Set(String(r.geocod) for (_, rs) in pairs(d.Dados) for r in rs)
+    odd = [c for c in codes if !ispseudo(c) && !(length(c) in (1, 2, 3, 4, 6, 7, 9))]
+    isempty(odd) ? ok("data 0008234: every code has a known length or is a known pseudo-unit") :
+        err("data 0008234: codes of no known form: " * join(first(sort(odd), 8), ", "))
+    "000000000" in codes && "999999999" in codes ?
+        ok("data 0008234: abroad and unknown rows still coded 000000000 and 999999999") :
+        warn("data 0008234: the abroad or unknown parish rows changed code")
+end
+
 function check_bare_codes()
     # The Census 2021 form: bare 4-character DICOs and 6-character DICOFREs.
     url = _data_url("0012328", "EN"; period = "S7A2021", dimensions = Dict(3 => "T"))
@@ -278,7 +304,10 @@ end
 function main(args)
     update = "--update-baseline" in args
     for f in (() -> (p = check_metadata(); p === nothing || check_data(p)),
-              check_extra_dimension, check_bare_codes, check_failure,
+              check_extra_dimension, check_periods,
+              () -> pseudo_check(unwrap(fetch(_data_url("0008234", "EN"; period = "S7A2023",
+                                                        dimensions = Dict(3 => "T"))))),
+              check_bare_codes, check_failure,
               check_catalogue_entry, check_catalogue_group)
         try
             f()

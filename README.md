@@ -39,6 +39,7 @@ the data made that unnecessary, and the reasoning is under
 | script | what |
 |---|---|
 | `build_notebook_dataset.jl` | the dataset SpatialEconometrics.jl's notebooks use: 308 attribute rows, mainland weights, one provenance file |
+| `build_parish_panel.jl` | the 2,882 mainland parishes over 2018-2023 on CAOP2024: income, births and area, long CSV, one queen GAL, provenance |
 | `build_parish_dataset.jl` | the 2,882 mainland parishes on the 2013 parish map: attributes, queen and rook GAL, centroids, provenance |
 | `caop_gpkg_to_geojson.py` | one CAOP GeoPackage layer to the GeoJSON `read_caop_geojson` reads (Python standard library only) |
 | `build_dataset.jl` | the general form -- any indicator list, straight through `join_municipal` and `write_dataset` |
@@ -304,6 +305,51 @@ On CAOP2024's parishes the hashing is still exact: rounding every vertex to the
 millimetre leaves the graph unchanged, and shapely 2.1 gives the same 8,409
 queen and 8,283 rook links, link for link.
 
+## Panels
+
+The same units over several periods, with one `W`. A cross-section cannot
+tell a spatial lag from spatially correlated errors; a panel of the same units
+can.
+
+```julia
+b = read_caop_geojson("caop2024_freguesias.json"; level = :parish, edition = "CAOP2024")
+yrs = string.(2018:2023)
+inc = indicator_data("0012748"; period = yrs)                          # one request
+bir = indicator_data("0008234"; period = yrs, dimensions = Dict(3 => "T"))
+p   = join_panel(b, :income => inc, :births => bir; periods = yrs)
+m   = panel_matrices(p, :births, :income)    # y, X stacked by period; W is N x N
+write_panel("data", p)                       # long CSV + GAL + centroids + provenance
+```
+
+`join_panel` keeps the units present in the boundaries and in every indicator
+in every period, so one `W` serves them all, and says what it dropped: islands,
+units of the other parish map (listed with no value, as the area indicator
+lists the 302 parishes restored in 2025), values with no boundary, and
+boundaries missing from some period. `panel_matrices` stacks period by period
+(the order `kron(I(T), W)` multiplies) over the units complete in every column
+and period used, and rebuilds `W` over them.
+
+**An unfiltered request gives only the latest period**, not every period, which
+`indicator_data`'s documentation used to claim. Several periods go in one
+request as a vector, `period = ["2018", "2019"]`, sent as
+`Dim1=S7A2018,S7A2019`, or `period = :all`.
+
+**On 2026-11-26 two parish indicators made a panel.** Surveying all 19
+parish-level indicators in the Portuguese catalogue: gross declared income per
+taxpayer (0012748, 2018-2024) and live births (0008234, 2014-2023) cover all
+2,882 mainland parishes every year on the 2013 map; the area (0011866) is
+annual on the same map to 2024. The median net income (0012757) is suppressed
+for three quarters of the parishes; rents and sales are published only for the
+parishes of large municipalities; the rest are Census 2021 alone, or on the
+2025 map. `build_parish_panel.jl` builds 2018-2023: 2,882 x 6, no missing
+cell, 8,409 queen links.
+
+**INE's rows include pseudo-units.** Live births carries residence abroad
+(`0` ... `000000000`, `YY`), unknown residence (`9` ... `999999999`) and the
+total `T` at every level, with the lengths of real levels. `ispseudo`
+recognises them, `geolevel` refuses them, and `municipal_values` and
+`parish_values` leave them out.
+
 ## Geography and provenance
 
 One request returns **every level at once** - 347 rows for 308 municipalities,
@@ -463,7 +509,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  510    510
+PortugalINE   |  627    627
 ```
 
 Measured on Julia 1.13.4, 2026-11-26; CI runs 1.10 and the latest release.
