@@ -81,6 +81,7 @@ exactly those units. The level is the boundaries' own: `ds.boundaries.level`.
 | `criterion` | `:queen` or `:rook`, as built |
 | `varcds`, `periods` | the INE code and reference period **per column, in column order** |
 | `extracted` | the earliest extraction timestamp among the sources |
+| `filters`, `languages`, `column_extracted` | per column: the dimension filter sent (`Dict(3 => "T")`), the language, and that extract's own extraction timestamp |
 
 `columns` and `nuts` are `NamedTuple`s of equal-length vectors, so each is
 already a valid Tables.jl column table. `adjacency` is deliberately not
@@ -105,7 +106,26 @@ struct MunicipalDataset
     dropped_data::Vector{String}
     dropped_islands::Vector{String}
     notes::Vector{String}
+    # Per column, like varcds and periods: what was asked for and when.
+    filters::Vector{Dict{Int, String}}
+    languages::Vector{String}
+    column_extracted::Vector{String}
 end
+
+# Without the request record, as a dataset built by hand has it: no filter, no
+# language, and the dataset-wide extraction date for every column.
+MunicipalDataset(dico, name, columns, nuts, boundaries, adjacency, criterion,
+                 varcds, periods, extracted, dropped_geometry, dropped_data,
+                 dropped_islands, notes) =
+    MunicipalDataset(dico, name, columns, nuts, boundaries, adjacency, criterion,
+                     varcds, periods, extracted, dropped_geometry, dropped_data,
+                     dropped_islands, notes,
+                     [Dict{Int, String}() for _ in varcds], fill("", length(varcds)),
+                     fill(extracted, length(varcds)))
+
+# A dimension filter as it went into the URL: "Dim3=T, Dim4=T", or "none".
+_filter_text(f::AbstractDict) = isempty(f) ? "none" :
+    join(("Dim$(k)=$(f[k])" for k in sort(collect(keys(f)))), ", ")
 
 Base.length(ds::MunicipalDataset) = length(ds.dico)
 
@@ -363,7 +383,7 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
     # exactly those units.
     bi = Dict(bcodes[i] => i for i in eachindex(bcodes))
     pick = [bi[d] for d in common]
-    bsub = MunicipalBoundaries(b.codes[pick], b.names[pick], b.rings[pick], b.level)
+    bsub = b[pick]
     A = contiguity(bsub; criterion, standardize = false)
 
     deg = vec(sum(A; dims = 2))
@@ -384,7 +404,10 @@ function join_municipal(b::MunicipalBoundaries, specs::Pair...;
                             bsub, A, criterion,
                             [s.varcd for s in sources], pers,
                             minimum(s.extracted for s in sources),
-                            dropped_geom, dropped_data, dropped_islands, note)
+                            dropped_geom, dropped_data, dropped_islands, note,
+                            [copy(s.dimensions) for s in sources],
+                            [s.language for s in sources],
+                            [s.extracted for s in sources])
 end
 
 """
@@ -442,9 +465,7 @@ function model_matrix(ds::MunicipalDataset, y::Symbol, xs::Symbol...;
         "no " * _noun(ds.boundaries.level, 1) * " has a value for all of " * join(used, ", ") * "."))
     gone = ds.dico[setdiff(eachindex(ds.dico), keep)]
 
-    bsub = MunicipalBoundaries(ds.boundaries.codes[keep],
-                               ds.boundaries.names[keep],
-                               ds.boundaries.rings[keep], ds.boundaries.level)
+    bsub = ds.boundaries[keep]
     A = contiguity(bsub; criterion = ds.criterion, standardize = false)
     deg = vec(sum(A; dims = 2))
     if standardize
@@ -603,12 +624,31 @@ function write_dataset(dir::AbstractString, ds::MunicipalDataset;
         println(io)
         println(io, "## Columns")
         println(io)
-        println(io, "| column | INE indicator | period | missing |")
-        println(io, "|---|---|---|---|")
+        println(io, "| column | INE indicator | period | filter | language | extracted | missing |")
+        println(io, "|---|---|---|---|---|---|---|")
         for (j, k) in enumerate(keys(ds.columns))
+            ex = ds.column_extracted[j]
             println(io, "| `", k, "` | ", ds.varcds[j], " | ", ds.periods[j],
+                    " | ", _filter_text(ds.filters[j]),
+                    " | ", isempty(ds.languages[j]) ? "not recorded" : ds.languages[j],
+                    " | ", isempty(ex) ? "not recorded" : first(ex, 10),
                     " | ", count(ismissing, ds.columns[k]), " |")
         end
+        println(io)
+        println(io, "A filter is the dimension codes sent beyond period and geography;")
+        println(io, "the indicator's metadata names what each code means (in the Census")
+        println(io, "2021 indicators, `Dim3=T` is both sexes).")
+        println(io)
+        println(io, "## Boundaries")
+        println(io)
+        bd = ds.boundaries
+        println(io, "| | |")
+        println(io, "|---|---|")
+        println(io, "| CAOP edition | ", isempty(bd.edition) ? "not stated" : bd.edition, " |")
+        println(io, "| file | ", isempty(bd.source) ? "not recorded" : "`" * bd.source * "`", " |")
+        println(io, "| SHA-256 | ", isempty(bd.sha256) ? "not recorded" : "`" * bd.sha256 * "`", " |")
+        println(io)
+        println(io, "> ", CAOP_ATTRIBUTION)
         println(io)
         println(io, "## Weights")
         println(io)

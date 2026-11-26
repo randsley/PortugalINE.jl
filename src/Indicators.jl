@@ -180,6 +180,12 @@ because the data endpoint does not return one; the unit is
 [`indicator_metadata`](@ref)'s `unit`. An indicator with
 dimensions beyond period and geography adds `dim_<n>` and `dim_<n>_label` for
 each.
+
+The request is recorded with the data, because the figures depend on it:
+`language`, the `dimensions` filter that was sent (`Dict(3 => "T")` is "both
+sexes" in the Census 2021 indicators, and without it a column cannot say what
+it holds), and the `url` fetched. A cached response carries the URL it was
+cached under, which is the same thing.
 """
 struct IndicatorData
     varcd::String
@@ -188,7 +194,14 @@ struct IndicatorData
     last_update::String
     extracted::String
     table::NamedTuple
+    language::String
+    dimensions::Dict{Int, String}
+    url::String
 end
+
+IndicatorData(varcd, name, periods, last_update, extracted, table) =
+    IndicatorData(varcd, name, periods, last_update, extracted, table,
+                  "", Dict{Int, String}(), "")
 
 """
     CatalogueEntry
@@ -664,10 +677,13 @@ function indicator_data(varcd::AbstractString; period = nothing,
     end
     url = _data_url(v, lang; period = p, dimensions)
 
-    return _fetch(b -> _parse_data(_json_ok(b, url), url), url; cache, timeout)
+    dims = Dict{Int, String}(Int(k) => String(v) for (k, v) in dimensions)
+    return _fetch(b -> _parse_data(_json_ok(b, url), url; language = lang, dimensions = dims),
+                  url; cache, timeout)
 end
 
-function _parse_data(obj, url::AbstractString)
+function _parse_data(obj, url::AbstractString; language::AbstractString = "",
+                     dimensions::Dict{Int, String} = Dict{Int, String}())
     dados = get(obj, :Dados, nothing)
     dados === nothing && throw(ArgumentError(
         "the response reported success but carried no Dados block. URL: $url"))
@@ -724,7 +740,7 @@ function _parse_data(obj, url::AbstractString)
                          periods_seen,
                          String(get(obj, :DataUltimoAtualizacao, "")),
                          String(get(obj, :DataExtracao, "")),
-                         table)
+                         table, String(language), dimensions, String(url))
 end
 
 # INE names an extra dimension's code `dim_3` and its label `dim_3_t`. The

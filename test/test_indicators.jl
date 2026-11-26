@@ -450,6 +450,22 @@ end
     @test d.table.dim_3 == ["T", "", "H", ""]
 end
 
+@testset "the request is recorded with the data" begin
+    d = indicator_data("0008074"; period = "S7A2022", dimensions = Dict(3 => "T"),
+                       cache = CACHE)
+    @test d.language == "EN"
+    @test d.dimensions == Dict(3 => "T")
+    @test d.url == _data_url("0008074", "EN"; period = "S7A2022",
+                             dimensions = Dict(3 => "T"))
+    # The record is a copy: changing the caller's Dict later does not rewrite it.
+    f = Dict(3 => "T")
+    d2 = indicator_data("0008074"; period = "S7A2022", dimensions = f, cache = CACHE)
+    f[3] = "H"
+    @test d2.dimensions == Dict(3 => "T")
+    @test indicator_data("0014580"; period = "S7A2023", cache = CACHE).dimensions ==
+          Dict{Int, String}()
+end
+
 @testset "the citation INE's terms require" begin
     d = indicator_data("0014580"; period = "2023", cache = CACHE)
     c = ine_citation(d)

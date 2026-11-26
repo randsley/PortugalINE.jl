@@ -86,11 +86,12 @@ function main(args)
     # Attributes, over all 308 municipalities. No boundaries involved.
     @info "fetching indicators"
     vals = Dict{Symbol, Dict{String, Union{Float64, Missing}}}()
-    dicos = String[]; names = Dict{String, String}()
+    dicos = String[]; names = Dict{String, String}(); extracted = String[]
     for (name, code, _) in COLUMNS
         ind = indicator_metadata(code)
         titles[code] = ind.name
         d = indicator_data(code; period = period_code(ind, PERIOD))
+        push!(extracted, d.extracted)
         m = municipal_values(d)
         length(m.dico) == 308 || error(
             "indicator $code returned $(length(m.dico)) municipalities, not 308")
@@ -150,7 +151,7 @@ function main(args)
         "islands are a separate CAOP collection and have no land neighbours, " *
         "so they must not be mixed in here.")
     perm = sortperm(b.codes)
-    b = MunicipalBoundaries(b.codes[perm], b.names[perm], b.rings[perm])
+    b = b[perm]
     b.codes == [d0 for d0 in dicos if ismainland(geo[d0])] || error(
         "the boundary DICOs are not the attribute file's mainland DICOs; the " *
         "boundary vintage and the indicator geography disagree about what exists")
@@ -198,7 +199,7 @@ function main(args)
         println(io)
         println(io, "> Source: Statistics Portugal (INE), indicators ",
                 join((c[2] for c in COLUMNS), ", "), ", reference period ",
-                PERIOD, ", extracted ", _today(), ".")
+                PERIOD, ", extracted ", first(minimum(extracted), 10), ".")
         println(io, ">")
         println(io, "> ", CAOP_ATTRIBUTION)
         println(io)
@@ -206,7 +207,8 @@ function main(args)
         println(io, "Directive 2019/1024. INE retains copyright: the data is openly licensed,")
         println(io, "not public domain, and reuse is conditional on citing the source.")
         println(io, "Boundaries are **CAOP2025** from Direção-Geral do Território, licensed")
-        println(io, "**CC-BY-4.0** with public access unrestricted.")
+        println(io, "**CC-BY-4.0** with public access unrestricted. Read from `", b.source,
+                "`, SHA-256 `", b.sha256, "`.")
         println(io)
         println(io, "## Files")
         println(io)

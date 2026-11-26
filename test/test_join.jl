@@ -28,7 +28,7 @@ cache_response!(joinpath(JFIX, "ine_data_0008074_T2022.json"), :data, "0008074";
 pp_data = indicator_data("0014580"; period = "S7A2023", cache = JCACHE)
 cr_data = indicator_data("0008074"; period = "S7A2022",
                          dimensions = Dict(3 => "T"), cache = JCACHE)
-lisboa6 = read_caop_geojson(joinpath(JFIX, "caop_lisboa6.json"))
+lisboa6 = read_caop_geojson(joinpath(JFIX, "caop_lisboa6.json"); edition = "CAOP2025")
 
 @testset "the DICO is the key, and the alternatives are counted" begin
     # 0014580 is published on NUTS 2024 and 0008074 on NUTS 2013. Both carry
@@ -330,8 +330,14 @@ end
     @test occursin("2019/1024", prov)
     # Per-column provenance, correctly paired. The table is the regression
     # test for the mapping bug: purchasing_power is 0014580 and not 0008074.
-    @test occursin("| `purchasing_power` | 0014580 | 2023 | 0 |", prov)
-    @test occursin("| `crime_rate` | 0008074 | 2022 | 0 |", prov)
+    @test occursin("| `purchasing_power` | 0014580 | 2023 | none | EN | 2026-11-06 | 0 |", prov)
+    # The filter is what makes crime_rate's figures "both sexes"; without it
+    # the column would not say what it holds.
+    @test occursin("| `crime_rate` | 0008074 | 2022 | Dim3=T | EN | 2026-11-06 | 0 |", prov)
+    # The boundaries: the edition as stated, the file, and its digest.
+    @test occursin("| CAOP edition | CAOP2025 |", prov)
+    @test occursin("| file | `caop_lisboa6.json` |", prov)
+    @test occursin("| SHA-256 | `" * lisboa6.sha256 * "` |", prov)
     @test occursin("binary and not row-standardised", prov)
     @test occursin("island units with no boundary | 30", prov)
     # Every note from the join is carried through.
@@ -355,7 +361,9 @@ end
                       centroids_file = false)
     csv = readlines(f[1])
     @test csv[3] == "1107,Loures,"
-    @test occursin("| `pp` | 0014580 | 2023 | 1 |", read(f[2], String))
+    prov = read(f[2], String)
+    @test occursin("| `pp` | 0014580 | 2023 | none | not recorded | ", prov)
+    @test occursin(" | 1 |", prov)
 end
 
 @testset "a name with a comma is quoted" begin

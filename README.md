@@ -340,8 +340,10 @@ reuse carries one condition - **cite the source**.
 > Geospatial data: Statistics Portugal (INE), Base Geografica de Referenciacao
 > da Informacao (BGRI).
 
-Boundaries come from **CAOP2025**, which Direcao-Geral do Territorio serves
-through an OGC API and licenses **CC-BY-4.0** with public access unrestricted.
+Boundaries come from **CAOP**, which Direcao-Geral do Territorio serves
+through an OGC API (the current edition, CAOP2025 as of November 2026) and as
+GeoPackage downloads (earlier editions; the parish data uses CAOP2024), and
+licenses **CC-BY-4.0** with public access unrestricted.
 Its own download pages do not state this; the licence is in the SNIG catalogue
 record the OGC API links as canonical, which gives `noLimitations` access and
 requires this credit for any published use, adapted or not:
@@ -349,7 +351,17 @@ requires this credit for any published use, adapted or not:
 > Informacao geografica cedida pela Direcao-Geral do Territorio
 
 `CAOP_ATTRIBUTION` holds that string, so it travels with the code rather than
-sitting in a README nobody reads. INE's **BGRI** remains an alternative, covered
+sitting in a README nobody reads.
+
+The provenance file `write_dataset` writes records what each column was asked
+for, not only where it came from: the INE indicator, the period, the dimension
+filter sent (`Dim3=T` is "both sexes" in the Census 2021 indicators, and
+without it a column does not say what it holds), the language and that
+extract's own extraction date. For the boundaries it records the file read,
+the SHA-256 of its bytes, and the CAOP edition passed as
+`read_caop_geojson(path; edition = "CAOP2024")`. The edition cannot be read
+from the file and has to be stated, because INE's parish figures join to
+CAOP2024 and not to the current CAOP. INE's **BGRI** remains an alternative, covered
 by INE's own terms, and is what layer 3 would read for sub-municipal work.
 
 The anonymised **Public Use Files** are out of scope. They sit behind a separate
@@ -416,7 +428,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  478    478
+PortugalINE   |  494    494
 ```
 
 Measured on Julia 1.13.4, 2026-11-26; CI runs 1.10 and the latest release.

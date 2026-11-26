@@ -39,6 +39,7 @@ module Boundaries
 using SparseArrays
 using LinearAlgebra: Diagonal
 using JSON3
+using SHA: sha256
 
 using ..Codes: ismunicipality, _isdicofre
 
@@ -73,21 +74,38 @@ names. Despite the name it holds either level; `level` says which.
   than one, and every ring is used for contiguity, so an exclave's neighbours
   are found as readily as the main body's.
 - `level`: `:municipality` or `:parish`.
+- `source`: the file the boundaries were read from (its name, not its path).
+- `sha256`: the SHA-256 of that file's bytes, which pins the exact vintage.
+- `edition`: the CAOP edition as the caller states it (`"CAOP2024"`), or `""`.
+  It cannot be read from the file, and it matters: INE's parish figures join
+  to CAOP2024 and not to CAOP2025 (see [`read_caop_geojson`](@ref)).
+
+`b[idx]` subsets and reorders the units and keeps the provenance.
 """
 struct MunicipalBoundaries
     codes::Vector{String}
     names::Vector{String}
     rings::Vector{Vector{Ring}}
     level::Symbol
-    function MunicipalBoundaries(codes, names, rings, level::Symbol)
+    source::String
+    sha256::String
+    edition::String
+    function MunicipalBoundaries(codes, names, rings, level::Symbol;
+                                 source::AbstractString = "",
+                                 sha256::AbstractString = "",
+                                 edition::AbstractString = "")
         level in (:municipality, :parish) || throw(ArgumentError(
             "level must be :municipality or :parish, got $(repr(level))"))
-        new(codes, names, rings, level)
+        new(codes, names, rings, level, source, sha256, edition)
     end
 end
 
 MunicipalBoundaries(codes, names, rings) =
     MunicipalBoundaries(codes, names, rings, :municipality)
+
+Base.getindex(b::MunicipalBoundaries, idx::AbstractVector{<:Integer}) =
+    MunicipalBoundaries(b.codes[idx], b.names[idx], b.rings[idx], b.level;
+                        source = b.source, sha256 = b.sha256, edition = b.edition)
 
 # The noun for a level, singular or plural.
 _noun(level::Symbol, n::Integer) = level === :parish ?
@@ -162,17 +180,25 @@ the coordinates unchanged.
 The file is large — the full mainland collection is about 200 MB of JSON for
 1.25 million vertices — so expect this to take a few seconds and a few
 gigabytes of transient memory.
+
+The result records where it came from: the file name, the SHA-256 of its bytes,
+and `edition` if given (`edition = "CAOP2024"`). The file does not say which
+CAOP edition it is, so state it; [`write_dataset`](@ref) writes all three into
+the provenance file.
 """
 function read_caop_geojson(path::AbstractString;
                            level::Symbol = :municipality,
                            code_property::AbstractString =
                                level === :parish ? "dtmnfr" : "dtmn",
                            name_property::AbstractString =
-                               level === :parish ? "freguesia" : "municipio")
+                               level === :parish ? "freguesia" : "municipio",
+                           edition::AbstractString = "")
     level in (:municipality, :parish) || throw(ArgumentError(
         "level must be :municipality or :parish, got $(repr(level))"))
     keyname, caopname = level === :parish ? ("DICOFRE", "dtmnfr") : ("DICO", "dtmn")
-    fc = JSON3.read(read(path, String))
+    bytes = read(path)
+    digest = bytes2hex(sha256(bytes))
+    fc = JSON3.read(bytes)
     haskey(fc, :features) || throw(ArgumentError(
         "$(repr(path)) is not a GeoJSON FeatureCollection: no \"features\" key"))
     feats = fc.features
@@ -212,7 +238,8 @@ function read_caop_geojson(path::AbstractString;
         dup = join([c for c in unique(codes) if count(==(c), codes) > 1], ", ")
         throw(ArgumentError("duplicate $keyname codes: $dup"))
     end
-    return MunicipalBoundaries(codes, names, rings, level)
+    return MunicipalBoundaries(codes, names, rings, level;
+                               source = basename(path), sha256 = digest, edition)
 end
 
 # A ring's vertices, with a duplicated closing vertex dropped so that a closed

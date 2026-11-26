@@ -203,6 +203,20 @@ end
     @test_throws ArgumentError write_gal(tempname(), b; id = :nonsense)
 end
 
+@testset "boundaries record the file they came from" begin
+    b = read_caop_geojson(CAOP6; edition = "CAOP2025")
+    @test b.source == basename(CAOP6)
+    @test b.sha256 == bytes2hex(PortugalINE.Boundaries.sha256(read(CAOP6)))
+    @test b.edition == "CAOP2025"
+    @test read_caop_geojson(CAOP6).edition == ""
+    # Subsetting keeps the record, so a join's boundaries still say where
+    # they came from.
+    s = b[[3, 1]]
+    @test s.codes == b.codes[[3, 1]]
+    @test (s.source, s.sha256, s.edition) == (b.source, b.sha256, b.edition)
+    @test s.level == b.level
+end
+
 @testset "bad input is refused by name" begin
     b = read_caop_geojson(CAOP6)
     @test_throws ArgumentError neighbour_lists(b; criterion = :bishop)

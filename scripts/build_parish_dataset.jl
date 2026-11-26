@@ -108,12 +108,12 @@ function main(args)
                 count(ismissing, m.value[keep]))
     end
 
-    b = read_caop_geojson(args[2]; level = :parish)
+    b = read_caop_geojson(args[2]; level = :parish, edition = "CAOP2024")
     length(b) == NMAIN || error(
         "expected the $NMAIN mainland parishes of CAOP2024, read $(length(b)). CAOP2024.1 " *
         "and CAOP2025 carry the 2025 parish map (3,049), which INE does not publish on.")
     perm = sortperm(b.codes)
-    b = MunicipalBoundaries(b.codes[perm], b.names[perm], b.rings[perm], :parish)
+    b = b[perm]
     b.codes == keys0 || error(
         "the boundary DICOFREs are not INE's mainland DICOFREs: " *
         "$(length(setdiff(b.codes, keys0))) only in CAOP, $(length(setdiff(keys0, b.codes))) only in INE")
@@ -181,7 +181,8 @@ function main(args)
         println(io, "INE data is open for reuse, commercial and non-commercial, under EU")
         println(io, "Directive 2019/1024. INE retains copyright: reuse is conditional on")
         println(io, "citing the source. The boundaries are **CAOP2024** (mainland) from")
-        println(io, "Direção-Geral do Território, licensed **CC-BY-4.0**.")
+        println(io, "Direção-Geral do Território, licensed **CC-BY-4.0**, read from `",
+                b.source, "`, SHA-256 `", b.sha256, "`.")
         println(io)
         println(io, "## Files")
         println(io)
@@ -200,13 +201,15 @@ function main(args)
         println(io)
         println(io, "## Columns")
         println(io)
-        println(io, "| column | INE indicator | period | unit |")
-        println(io, "|---|---|---|---|")
-        println(io, "| `dicofre` | official parish code | | 6 characters |")
-        println(io, "| `name` | parish name, as INE gives it | | |")
-        println(io, "| `dico`, `district`, `district_name` | from the DICOFRE | | |")
-        for (name, code, period, _, unit) in COLUMNS
-            println(io, "| `", name, "` | ", code, " | ", period, " | ", unit, " |")
+        println(io, "| column | INE indicator | period | filter | unit |")
+        println(io, "|---|---|---|---|---|")
+        println(io, "| `dicofre` | official parish code | | | 6 characters |")
+        println(io, "| `name` | parish name, as INE gives it | | | |")
+        println(io, "| `dico`, `district`, `district_name` | from the DICOFRE | | | |")
+        for (name, code, period, dims, unit) in COLUMNS
+            ftxt = isempty(dims) ? "none" :
+                join(("Dim$(k)=$(dims[k])" for k in sort(collect(keys(dims)))), ", ")
+            println(io, "| `", name, "` | ", code, " | ", period, " | ", ftxt, " | ", unit, " |")
         end
         println(io)
         println(io, "Full indicator titles, as INE states them:")
