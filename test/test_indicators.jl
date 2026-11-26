@@ -505,7 +505,8 @@ if get(ENV, "PORTUGALINE_LIVE_TESTS", "0") == "1"
         ind = indicator_metadata("0014580"; cache = live)
         @test ind.varcd == "0014580"
         @test [d.number for d in ind.dimensions] == [1, 2]
-        @test occursin("Geographic localization", ind.dimensions[2].label)
+        # Geography by its codes; the label's translation is not stable.
+        @test any(c -> c.code == "PT", ind.dimensions[2].categories)
         @test !isempty(periods(ind))
 
         last = ind.dimensions[1].categories[end]
@@ -517,8 +518,11 @@ if get(ENV, "PORTUGALINE_LIVE_TESTS", "0") == "1"
         @test count(!ismissing, m.value) > 300
 
         e = catalogue_entry("0014580"; cache = live)
-        @test e.geo_lastlevel == "Município"
-        @test e.title == "Per capita purchasing power"
+        @test ismunicipal(e)
+        # The Portuguese record is the stable one.
+        ept = catalogue_entry("0014580"; language = "PT", cache = live)
+        @test ept.geo_lastlevel == "Município"
+        @test ept.title == "Poder de compra per capita"
         @test_throws ArgumentError indicator_metadata("9999999"; cache = live)
     end
 end

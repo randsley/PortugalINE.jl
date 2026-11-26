@@ -74,7 +74,7 @@ function main(args)
         e = get(by, code, nothing)
         src = "main group"
         if e === nothing
-            e = catalogue_entry(code)
+            e = catalogue_entry(code; language = "PT")  # Portuguese: INE's translations are inconsistent, and this decides coverage.
             src = "single lookup"
         end
         ismunicipal(e) || error(

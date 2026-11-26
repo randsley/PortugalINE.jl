@@ -53,7 +53,7 @@ function main(args)
     # leaving coverage unverified for anything the group listing omits.
     for (name, code) in INDICATORS
         e = get(by, code, nothing)
-        e === nothing && (e = catalogue_entry(code))
+        e === nothing && (e = catalogue_entry(code; language = "PT"))  # Portuguese: INE's translations are inconsistent, and this decides coverage.
         ismunicipal(e) || error(
             "indicator $code ($name) is published only to $(e.geo_lastlevel), " *
             "so it cannot carry a municipal W. Pick another indicator.")

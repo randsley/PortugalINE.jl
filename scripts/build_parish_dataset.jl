@@ -67,7 +67,7 @@ function main(args)
     by = Dict(e.varcd => e for e in catalogue())
     for code in unique(c[2] for c in COLUMNS)
         e = get(by, code, nothing)
-        e === nothing && (e = catalogue_entry(code))
+        e === nothing && (e = catalogue_entry(code; language = "PT"))  # Portuguese: INE's translations are inconsistent, and this decides coverage.
         # The single lookup gives "Parish" in English for some indicators.
         e.geo_lastlevel in ("Freguesia", "Parish") || error(
             "indicator $code is published only to $(e.geo_lastlevel), not to parish level")

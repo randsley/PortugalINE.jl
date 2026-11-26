@@ -110,9 +110,6 @@ function check_metadata()
     nums = sort([parse(Int, string(d.dim_num)) for d in dz.Descricao_Dim])
     nums == [1, 2] ? ok("metadata 0014580: dimensions are 1 (period) and 2 (geography)") :
                      err("metadata 0014580: dimensions are $nums, expected [1, 2]")
-    geo = [d for d in dz.Descricao_Dim if string(d.dim_num) == "2"]
-    !isempty(geo) && occursin("Geographic", geo[1].abrv) ||
-        err("metadata 0014580: Dim2 is no longer labelled as geography")
     # Categoria_Dim: an array of objects whose values are arrays of categories.
     cats = [c for blk in dz.Categoria_Dim for (_, es) in pairs(blk) for c in es]
     isempty(cats) && (err("metadata 0014580: no categories in Categoria_Dim"); return nothing)
@@ -121,6 +118,12 @@ function check_metadata()
                err("metadata 0014580: $bad of $(length(cats)) categories lack a field in " *
                    join(first.(READ_CATEG), ", "))
     seen["metadata_category"] = keyset(cats[1])
+    # Dim2 is geography: judged by its codes, not its label, which INE
+    # translates inconsistently.
+    any(c -> string(c.dim_num) == "2" && c.categ_cod == "PT", cats) &&
+        count(c -> string(c.dim_num) == "2" && ismunicipality(String(c.categ_cod)), cats) == 308 ?
+        ok("metadata 0014580: Dim2 holds PT and the 308 municipalities") :
+        err("metadata 0014580: Dim2 no longer holds the geography codes (PT and 308 municipalities)")
     pers = [c for c in cats if string(c.dim_num) == "1"]
     isempty(pers) && (err("metadata 0014580: no period categories"); return nothing)
     last = pers[argmax([parse(Int, string(c.categ_ord)) for c in pers])]
@@ -204,16 +207,19 @@ function check_catalogue_entry()
     isempty(missing_tags) ? ok("catalogue opc=1: all $(length(READ_CAT)) tags the client reads") :
                             err("catalogue opc=1: missing tag(s) " * join(missing_tags, ", "))
     e = only(_parse_catalogue(body, "opc=1"))
-    e.title == "Per capita purchasing power" ? ok("catalogue opc=1: honours lang=EN") :
+    # Informational only: nothing in the package depends on an English title.
+    e.title == "Per capita purchasing power" ? ok("catalogue opc=1: English title unchanged") :
         warn("catalogue opc=1: English title is now $(repr(e.title))")
     # opc=1 localises geo_lastlevel for some indicators only (0012600 gives
     # "Parish" under EN, 0008234 "Freguesia"). Whatever it says now, it must be
     # a spelling `ismunicipal` accepts.
-    for v in ("0012600", "0008234")
-        l = only(_parse_catalogue(fetch(_catalogue_url("EN"; varcd = v)), "opc=1")).geo_lastlevel
-        l in MUNICIPAL_LEVELS ? ok("catalogue opc=1 $v: geo_lastlevel $(repr(l)) is accepted") :
-            err("catalogue opc=1 $v: geo_lastlevel $(repr(l)) is a parish indicator's level " *
-                "that `ismunicipal` rejects; add it to MUNICIPAL_LEVELS")
+    # Both languages: the Portuguese is the stable one, the English is what a
+    # caller gets by default.
+    for v in ("0012600", "0008234"), lang in ("PT", "EN")
+        l = only(_parse_catalogue(fetch(_catalogue_url(lang; varcd = v)), "opc=1")).geo_lastlevel
+        l in MUNICIPAL_LEVELS ? ok("catalogue opc=1 $v $lang: geo_lastlevel $(repr(l)) is accepted") :
+            err("catalogue opc=1 $v $lang: geo_lastlevel $(repr(l)) is a parish indicator's " *
+                "level that `ismunicipal` rejects; add it to MUNICIPAL_LEVELS")
     end
 end
 
