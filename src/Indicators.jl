@@ -122,7 +122,8 @@ const MUNICIPAL_LEVELS = Set(["Município", "Municipio", "Freguesia",
 """
     DimensionCategory
 
-One admissible value of a dimension: the `code` to send as a filter, the
+One admissible value of a dimension: the `code` to send as a filter (INE's
+`cat_id`, which is also what the data rows carry), the
 `label` INE displays, and its depth in the dimension's own hierarchy
 (`level` 1 is the root, so for geography level 1 is Portugal and level 5 is a
 municipality).
@@ -301,15 +302,20 @@ end
 
 The pauses, in seconds, before the second, third and later attempts at an INE
 request. INE resets connections under load, so a failed connection, an HTTP
-429 or 5xx, or a body of the wrong shape is retried after each of these;
+404, 429 or 5xx (INE answers 404 for valid codes when throttling), or a body of
+the wrong shape is retried after each of these;
 anything else, an INE refusal included, is thrown at once. Set
 `PortugalINE.Indicators.RETRY_DELAYS[] = Float64[]` to make one attempt only.
 """
 const RETRY_DELAYS = Ref([5.0, 20.0, 60.0])
 
+# 404 is retried too. Every URL here is one of INE's fixed endpoints, and INE
+# answers an unknown code with 200 and Sucesso.Falso, never 404; but under load
+# it answers 404 for indicators that exist (measured 2026-11-26: a run of
+# requests to valid codes all 404, the same requests succeeding minutes later).
 _retryable(e) = e isa _MalformedResponse ||
     (e isa Downloads.RequestError &&
-     (e.response.status == 0 || e.response.status == 429 || e.response.status >= 500))
+     (e.response.status in (0, 404, 429) || e.response.status >= 500))
 
 # Write through a temporary file and rename, so an interrupted write cannot
 # leave a truncated response behind to be trusted on the next call.
@@ -554,7 +560,12 @@ function _parse_metadata(obj, url::AbstractString)
             for e in (entries isa JSON3.Array ? entries : (entries,))
                 n = _int(get(e, :dim_num, nothing), 0)
                 push!(get!(cats, n, DimensionCategory[]),
-                      DimensionCategory(String(get(e, :categ_cod, get(e, :cat_id, ""))),
+                      # `cat_id`, not `categ_cod`: the filter takes cat_id and
+                      # the data rows echo it. The two agree for periods and
+                      # geography, but not always beyond: 0012234's Dim3 total
+                      # is cat_id "H1", categ_cod "H.1", and Dim3=H.1 is
+                      # refused (measured 2026-11-26).
+                      DimensionCategory(String(get(e, :cat_id, get(e, :categ_cod, ""))),
                                         String(get(e, :categ_dsg, "")),
                                         _int(get(e, :categ_nivel, nothing), 0),
                                         _int(get(e, :categ_ord, nothing), 0)))

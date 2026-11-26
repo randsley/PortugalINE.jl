@@ -121,3 +121,24 @@ end
     m = model_matrix(ds, :income, :unemployment)
     @test size(m.X) == (10, 1) && all(sum(m.W; dims = 2) .≈ 1)
 end
+
+@testset "residence abroad is not a parish" begin
+    # 0008234 (live births) carries "Estrangeiro" as 000000000 / 000000. District
+    # 00 does not exist; before this, ismainland (district <= 18) took it for a
+    # mainland parish, so it sat among the 2,882 as a 2,883rd.
+    @test !isparish("000000000") && !isparish("000000")
+    @test !ismunicipality("0000000") && !ismunicipality("0000")
+    @test isparish("11C130741") && isparish("130741")
+    @test_throws ArgumentError ismainland("000000000")
+    @test_throws ArgumentError isisland("000000000")
+    # The district ranges are bounded on both sides.
+    @test ismainland("130741") && !isisland("130741")
+    @test isisland("310101") && !ismainland("310101")
+    # parish_values leaves it out rather than keying it as a parish.
+    t = (period = ["2023", "2023", "2023"],
+         geocod = ["000000000", "11C130741", "1A0110601"],
+         geodsg = ["Estrangeiro", "Vila Boa", "x"],
+         value = Union{Float64, Missing}[295.0, 3.0, 7.0])
+    pv = parish_values(PortugalINE.IndicatorData("0008234", "births", ["2023"], "", "", t))
+    @test pv.dicofre == ["110601", "130741"]
+end

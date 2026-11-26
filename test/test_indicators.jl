@@ -457,6 +457,33 @@ end
     @test d.table.dim_3 == ["T", "", "H", ""]
 end
 
+@testset "a category's code is cat_id, which the filter takes" begin
+    # 0012234's Dim3 total is cat_id "H1", categ_cod "H.1"; INE refuses
+    # Dim3=H.1 and the data rows carry "H1". Measured 2026-11-26.
+    I = PortugalINE.Indicators
+    body = """[{"IndicadorCod":"0012234","Sucesso":{"Verdadeiro":[]},"Dimensoes":{
+      "Descricao_Dim":[{"dim_num":"1","abrv":"p","versao":"x"},{"dim_num":"2","abrv":"g","versao":"y"},
+                       {"dim_num":"3","abrv":"c","versao":"z"}],
+      "Categoria_Dim":[{"Dim_Num1_S5A20254":[{"dim_num":"1","cat_id":"S5A20254","categ_cod":"S5A20254","categ_dsg":"4.º Trimestre de 2025","categ_ord":"1","categ_nivel":"1"}],
+                        "Dim_Num3_H1":[{"dim_num":"3","cat_id":"H1","categ_cod":"H.1","categ_dsg":"Total","categ_ord":"1","categ_nivel":"1"}],
+                        "Dim_Num3_H11":[{"dim_num":"3","cat_id":"H11","categ_cod":"H.1.1","categ_dsg":"Novos","categ_ord":"2","categ_nivel":"2"}]}]}}]"""
+    ind = I._parse_metadata(I._json_ok(body, "u"), "u")
+    d3 = only(d for d in ind.dimensions if d.number == 3)
+    @test [c.code for c in d3.categories] == ["H1", "H11"]
+    @test [c.label for c in d3.categories] == ["Total", "Novos"]
+end
+
+@testset "a 404 from INE is retried: it answers 404 when throttling" begin
+    I = PortugalINE.Indicators
+    D = I.Downloads
+    err(status) = D.RequestError("https://www.ine.pt/x", 0, "",
+                                 D.Response("https", "https://www.ine.pt/x", status, "", Pair{String, String}[]))
+    @test I._retryable(err(404)) && I._retryable(err(429)) && I._retryable(err(503))
+    @test I._retryable(err(0))
+    @test !I._retryable(err(400)) && !I._retryable(err(403))
+    @test !I._retryable(ArgumentError("INE refused the request"))
+end
+
 @testset "the request is recorded with the data" begin
     d = indicator_data("0008074"; period = "S7A2022", dimensions = Dict(3 => "T"),
                        cache = CACHE)

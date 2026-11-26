@@ -55,7 +55,7 @@ const READ_META = [:IndicadorCod => :str, :IndicadorNome => :str, :Periodic => :
                    :DataExtracao => :str, :Lingua => :str, :Dimensoes => :obj,
                    :Sucesso => :obj]
 const READ_DESC = [:dim_num => :strint, :abrv => :str, :versao => :str]
-const READ_CATEG = [:dim_num => :strint, :categ_cod => :str, :categ_dsg => :str,
+const READ_CATEG = [:dim_num => :strint, :cat_id => :str, :categ_cod => :str, :categ_dsg => :str,
                     :categ_nivel => :strint, :categ_ord => :strint]
 const READ_DATA = [:IndicadorCod => :str, :IndicadorDsg => :str, :DataExtracao => :str,
                    :DataUltimoAtualizacao => :str, :Dados => :obj, :Sucesso => :obj]

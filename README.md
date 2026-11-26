@@ -288,6 +288,18 @@ Four things were found on the data, on 2026-11-25, and are pinned in
   (0012757) has a value for 735 of the 2,882 mainland parishes in 2024; the
   mean gross declared income (0012748) has all of them.
 
+Three more, found on 2026-11-26 surveying every parish-level indicator:
+
+- **Residence abroad looks like a parish.** Live births (0008234) carry
+  `000000000` / `000000`, "Estrangeiro". District 00 does not exist, but
+  `ismainland` accepted it as a mainland parish; `isparish` and
+  `ismunicipality` now reject it.
+- **A filter takes `cat_id`, not `categ_cod`.** The metadata gives both, and
+  they differ for some dimensions: 0012234's Dim3 total is `H1` against
+  `H.1`, and INE refuses `Dim3=H.1`. `DimensionCategory.code` is `cat_id`.
+- **INE answers 404 when it is throttling.** A burst of valid requests came
+  back 404 and succeeded minutes later, so 404 is retried like a 5xx.
+
 On CAOP2024's parishes the hashing is still exact: rounding every vertex to the
 millimetre leaves the graph unchanged, and shapely 2.1 gives the same 8,409
 queen and 8,283 rook links, link for link.
@@ -451,7 +463,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  496    496
+PortugalINE   |  510    510
 ```
 
 Measured on Julia 1.13.4, 2026-11-26; CI runs 1.10 and the latest release.

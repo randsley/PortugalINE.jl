@@ -102,7 +102,15 @@ Whether `code` names one of the 308 municipalities: a 7-character code
 (letters in the NUTS III prefix included), or a bare 4-digit DICO.
 """
 ismunicipality(code::AbstractString) =
-    length(code) == 7 || (length(code) == 4 && all(isdigit, code))
+    (length(code) == 7 || (length(code) == 4 && all(isdigit, code))) && !_isabroad(code, 4)
+
+# INE codes residence abroad ("Estrangeiro") as an all-zero unit: `000000000`
+# and `000000` at parish level in 0008234 (live births), and the same pattern at
+# municipal level. District 00 does not exist, so these are not places in
+# Portugal, and `ismunicipality` and `isparish` reject them -- without this,
+# `ismainland` (district <= 18) took "abroad" for a mainland parish.
+_isabroad(code::AbstractString, n::Int) =
+    length(code) >= n && code[(end - n + 1):(end - n + 2)] == "00"
 
 # A DICOFRE is the DICO and two more characters. Those are digits for every
 # parish but the eight unions of the 2013 reform in Barcelos (DICO 0302), which
@@ -119,7 +127,7 @@ Whether `code` names a parish (freguesia): a 9-character code (NUTS III prefix
 plus DICOFRE) or a bare 6-character DICOFRE.
 """
 isparish(code::AbstractString) =
-    length(code) == 9 || (length(code) == 6 && _isdicofre(code))
+    (length(code) == 9 || (length(code) == 6 && _isdicofre(code))) && !_isabroad(code, 6)
 
 """
     isnuts3(code) -> Bool
@@ -221,8 +229,8 @@ such a matrix divides by zero. Decide between the 278 mainland municipalities
 and a distance- or neighbour-count-based weighting before building `W`, rather
 than discovering it in a singular matrix.
 """
-ismainland(code::AbstractString) = district(code) <= 18
-isisland(code::AbstractString) = !ismainland(code)
+ismainland(code::AbstractString) = 1 <= district(code) <= 18
+isisland(code::AbstractString) = 31 <= district(code) <= 49
 
 """
     DISTRICT_NAMES
