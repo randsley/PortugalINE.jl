@@ -15,8 +15,10 @@ The catalogue carries `<geo_lastlevel>`, the finest geographic level an
 indicator is published at. That answers "can I get this by municipality?"
 without downloading the indicator and counting codes, which is how the question
 otherwise has to be answered — one request of tens of kilobytes per candidate.
-Of the 326 indicators in INE's main group, 98 reach `Município` and 17 reach
-`Freguesia`; since a freguesia is *inside* a municipality, 115 are usable here.
+Of the 326 indicators in INE's main group on 2026-11-06, 98 reached `Município`
+and 17 `Freguesia`; since a freguesia is *inside* a municipality, 115 were
+usable here. On 2026-11-26 the group held 309 and 99: it changes, and
+indicators leave it without being withdrawn.
 [`ismunicipal`](@ref) applies that reasoning, and also absorbs INE's
 inconsistent spelling of its own levels (both `NUTS III` and `NUTS 3` occur).
 
@@ -104,9 +106,14 @@ const INE_ATTRIBUTION = "Source: Statistics Portugal (INE)."
 
 # The levels at which municipal data exists. A freguesia is inside a
 # municipality, so an indicator published down to freguesia aggregates up.
-# "Municipio" without the accent and both spellings of NUTS III are here
-# because INE's own catalogue uses them interchangeably.
-const MUNICIPAL_LEVELS = Set(["Município", "Municipio", "Freguesia"])
+# "Municipio" without the accent is here because INE's own catalogue uses both.
+# The English names are here because the single-indicator catalogue (`opc=1`)
+# localises `geo_lastlevel` for some indicators and not others: measured
+# 2026-11-26, 0012600 and 0012601 give "Parish" under lang=EN, while 0008234
+# gives "Freguesia" and 0014580 "Município". The group catalogue (`opc=3`)
+# gives the Portuguese names under either language.
+const MUNICIPAL_LEVELS = Set(["Município", "Municipio", "Freguesia",
+                              "Municipality", "Parish"])
 
 # ---------------------------------------------------------------------------
 # types

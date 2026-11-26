@@ -4,9 +4,17 @@ on:
     branches: [master]
     tags: ['*']
   pull_request:
+  # Weekly, and on demand, the live tests run as well (PORTUGALINE_LIVE_TESTS
+  # below). On push and pull request the suite stays offline, so a network
+  # failure cannot turn a code change red.
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+env:
+  PORTUGALINE_LIVE_TESTS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }}

@@ -1,0 +1,29 @@
+name: API check
+# Weekly: does INE's API still return the fields PortugalINE.jl reads, and do
+# the documented traps still hold? See tools/check_api.jl. A failed scheduled
+# run emails the repo owner.
+on:
+  schedule:
+    - cron: "30 6 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - tools/check_api.jl
+      - tools/api_baseline.json
+      - .github/workflows/api-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v2
+      - run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - run: julia --project=. tools/check_api.jl

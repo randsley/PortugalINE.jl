@@ -252,6 +252,13 @@ end
     # The field the request is for.
     @test e.geo_lastlevel == "Município"
     @test ismunicipal(e)
+
+    # opc=1 under lang=EN localises geo_lastlevel for some indicators and not
+    # others: 0012600 came back "Parish" on 2026-11-26 while 0008234 came back
+    # "Freguesia". Both spellings, and the English for Município, must count.
+    lvl(l) = CatalogueEntry("0012600", "t", "", "", "", l, "", "", "", "", String[])
+    @test all(ismunicipal ∘ lvl, ["Parish", "Freguesia", "Municipality", "Município", "Municipio"])
+    @test !any(ismunicipal ∘ lvl, ["NUTS III", "NUTS 3", "Portugal", "Distrito"])
 end
 
 @testset "catalogue: the main group, and what it answers" begin

@@ -101,8 +101,8 @@ so the choice is visible in the code.
 ```julia
 using PortugalINE
 
-cat = catalogue()                        # 326 indicators, one 500 kB request
-count(ismunicipal, cat)                  # 115 reach municipal level or finer
+cat = catalogue()                        # 309 indicators (2026-11-26), one 500 kB request
+count(ismunicipal, cat)                  # 99 reach municipal level or finer
 search_catalogue(cat, "poder de compra"; municipal_only = true)
 
 ind = indicator_metadata("0014580")      # dimensions, and every code they take
@@ -308,13 +308,27 @@ because a freguesia sits inside one municipality and so aggregates up, which
 makes **115** usable for a municipal `W`. NUTS III does not aggregate down,
 however it is spelled -- and INE spells it both `NUTS III` and `NUTS 3` in the
 same document, which is why `ismunicipal` is a function and not a string
-comparison at the call site.
+comparison at the call site. Those figures are from 2026-11-06, which the test
+fixture holds. On 2026-11-26 the group held 309, 83 to `Município` and 16 to
+`Freguesia` (99 in all).
+
+**The single lookup localises the level, sometimes.** `catalogue_entry` under
+`language = "EN"` gave `geo_lastlevel = "Parish"` for 0012600 and 0012601 on
+2026-11-26, and `"Freguesia"` for 0008234; the group listing gives the
+Portuguese name under either language. `ismunicipal` accepts the English names
+for that reason, and `tools/check_api.jl` fails if a new spelling of a
+municipal or parish level appears.
 
 **The main group is not all of INE, though.** `0014581`, the national share of
 purchasing power, is published to `Município` and is absent from the group
 listing entirely -- found when a build script treated a missing entry as fatal.
-So 115 is a floor on the municipal indicators, not a census of them, and
-`catalogue()` is the cheap first pass rather than the authority.
+So the count is a floor on the municipal indicators, not a census of them, and
+`catalogue()` is the cheap first pass rather than the authority. The group also
+changes without indicators being withdrawn: between 2026-11-06 and 2026-11-26,
+28 indicators left it, 18 of them municipal or parish level, among them
+resident population (0008273), the ageing ratio (0008258) and live births by
+parish (0008234). All are still served by `catalogue_entry` and the data
+endpoint.
 `catalogue_entry` serves indicators outside the group and is the fallback both
 build scripts use; checking coverage for a known code costs one small request,
 not 500 kB.
@@ -383,10 +397,19 @@ public entry points end to end, URL construction included, rather than calling
 the parsers and leaving the request side unchecked. One test seeds a
 deliberately altered title and asserts the alteration comes back, which is the
 proof that no request went out; without it a run on a networked machine could
-pass by silently fetching the real thing. A live suite that checks the API has
-not drifted is gated behind `PORTUGALINE_LIVE_TESTS=1` and is kept out of CI,
-because INE resets connections often enough that a green suite would stop
-meaning anything.
+pass by silently fetching the real thing. A live suite is gated behind
+`PORTUGALINE_LIVE_TESTS=1`. CI sets it only on its weekly and manual runs, so a
+network failure cannot turn a code change red, and INE's dropped connections
+are retried in the library.
+
+**API drift** is checked weekly by `tools/check_api.jl` (workflow
+`api-check.yml`). INE publishes no spec, so it reads live responses raw and
+checks that every field the parsers read is present with the expected type,
+that the documented traps still hold (period code in, label out; failure as
+HTTP 200; the bare Census codes; 308 municipalities), and compares keys and
+the catalogue against `tools/api_baseline.json`. New keys and catalogue changes
+are warnings, accepted with `--update-baseline`; a missing field, or a level
+spelling `ismunicipal` would reject, fails the run.
 
 Layers 2 and 4 are also checked against a dataset produced some other way.
 `scripts/verify_against_reference.jl` compared them value by value with the
@@ -428,7 +451,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  494    494
+PortugalINE   |  496    496
 ```
 
 Measured on Julia 1.13.4, 2026-11-26; CI runs 1.10 and the latest release.
