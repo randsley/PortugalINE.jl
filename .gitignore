@@ -7,3 +7,4 @@ Manifest.toml
 .DS_Store
 /data/cache/
 __pycache__/
+CLAUDE.md

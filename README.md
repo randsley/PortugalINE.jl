@@ -113,9 +113,14 @@ ine_citation(d)                           # the citation INE's terms require
 
 `d.table` is a `NamedTuple` of equal-length vectors, which is already a valid
 Tables.jl column table, so `DataFrame(d.table)` works without this package
-depending on DataFrames or Tables. Responses are cached on disk by URL;
-`cache_response!` seeds that cache from an archived body, which is how an
-extract gets frozen so a published number can be regenerated without the API.
+depending on DataFrames or Tables. Responses are cached on disk by URL, and
+only once they have parsed: INE reports failure with HTTP 200, so caching first
+would store an error message or a maintenance page and return it for ever. A
+reset connection, an HTTP 429 or 5xx, or a body of the wrong shape is retried
+after 5, 20 and 60 seconds (`PortugalINE.Indicators.RETRY_DELAYS`); an INE
+refusal is thrown at once. `cache_response!` seeds the cache from an archived
+body, which is how an extract gets frozen so a published number can be
+regenerated without the API.
 
 ### Four things this API does that will catch you
 
@@ -411,7 +416,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  405    405
+PortugalINE   |  478    478
 ```
 
-Measured on Julia 1.13.3 and 1.10.13, both green.
+Measured on Julia 1.13.4, 2026-11-26; CI runs 1.10 and the latest release.

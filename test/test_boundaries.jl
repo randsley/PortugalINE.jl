@@ -184,11 +184,21 @@ end
         @test parse(Int, split(lines[2i])[2]) == deg[i]
         @test length(split(lines[2i + 1])) == deg[i]
     end
-    # Named ids are available, and differ from codes.
+    # Named ids are refused when a name has a space: GAL splits on whitespace,
+    # so "Vila Franca de Xira 4" would read back as an id "Vila" with degree
+    # "Franca". This fixture holds that municipality.
+    e = try; write_gal(tempname(), b; id = :name); catch e; e; end
+    @test e isa ArgumentError && occursin("Vila Franca de Xira", e.msg)
+    # Names that are single tokens and unique are written as given.
+    sq(x) = [[(x, 0.0), (x + 1, 0.0), (x + 1, 1.0), (x, 1.0), (x, 0.0)]]
+    b2 = MunicipalBoundaries(["0101", "0102"], ["Lisboa", "Oeiras"], [sq(0.0), sq(1.0)])
     p2 = tempname() * ".gal"
-    write_gal(p2, b; criterion = :queen, id = :name)
+    write_gal(p2, b2; criterion = :queen, id = :name)
     @test split(readlines(p2)[1])[4] == "municipio"
-    @test startswith(readlines(p2)[2], "Lisboa")
+    @test readlines(p2)[2:end] == ["Lisboa 1", "Oeiras", "Oeiras 1", "Lisboa"]
+    # And a repeated name is refused: two Calhetas would become one unit.
+    b3 = MunicipalBoundaries(["3101", "4501"], ["Calheta", "Calheta"], [sq(0.0), sq(1.0)])
+    @test_throws ArgumentError write_gal(tempname(), b3; id = :name)
     rm(path); rm(p2)
     @test_throws ArgumentError write_gal(tempname(), b; id = :nonsense)
 end

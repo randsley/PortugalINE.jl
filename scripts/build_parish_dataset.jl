@@ -49,19 +49,14 @@ fmt(v) = ismissing(v) ? "" :
 _today() = Base.Libc.strftime("%Y-%m-%d", time())
 csvf(s) = any(c -> c in (',', '"'), s) ? string('"', replace(s, '"' => "\"\""), '"') : s
 
+# The large Census requests are slow, hence the long timeout. Retries on a
+# reset connection or a malformed body happen inside the package
+# (`PortugalINE.Indicators.RETRY_DELAYS`).
 function fetch_values(code, period, dims)
     ind = indicator_metadata(code)
-    for attempt in 1:4
-        try
-            d = indicator_data(code; period = period_code(ind, period), dimensions = dims,
-                               timeout = 600)
-            return ind, d, parish_values(d)
-        catch e
-            (e isa ArgumentError || attempt == 4) && rethrow()
-            @warn "INE request failed, retrying" code attempt exception = e
-            sleep(20 * attempt)
-        end
-    end
+    d = indicator_data(code; period = period_code(ind, period), dimensions = dims,
+                       timeout = 600)
+    return ind, d, parish_values(d)
 end
 
 function main(args)

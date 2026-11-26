@@ -66,7 +66,11 @@ an error rather than as an empty table.
 ## Caching
 
 Responses are cached on disk, keyed by URL, because the API is slow and the
-answers change a few times a year. See [`ine_cache_dir`](@ref) to find or
+answers change a few times a year. A body is cached only after it has parsed,
+since INE reports failure with HTTP 200 and a cached failure would be returned
+on every later call. Reset connections, HTTP 429 and 5xx, and bodies of the
+wrong shape are retried after the pauses in [`RETRY_DELAYS`](@ref); an INE
+refusal is not. See [`ine_cache_dir`](@ref) to find or
 relocate the cache and [`clear_ine_cache!`](@ref) to drop it; pass
 `cache = nothing` to any call to bypass it.
 """
@@ -263,26 +267,83 @@ function _cache_file(url::AbstractString, dir::AbstractString)
     return joinpath(dir, string(tag, "_", bytes2hex(sha256(url))[1:16]))
 end
 
-# One fetch, cached. Writes through a temporary file and renames, so an
-# interrupted download cannot leave a truncated response behind to be trusted
-# on the next call.
-function _fetch(url::AbstractString; cache, timeout::Real)
-    if cache !== nothing
-        path = _cache_file(url, cache)
-        isfile(path) && return read(path, String)
-    end
-    body = sprint() do io
-        Downloads.download(url, io; timeout = float(timeout))
-    end
-    if cache !== nothing
-        mkpath(cache)
-        path = _cache_file(url, cache)
-        tmp = path * ".part" * string(getpid())
-        write(tmp, body)
-        mv(tmp, path; force = true)
-    end
-    return body
+# A body that is not the shape its endpoint returns: an HTML maintenance page
+# served with status 200, JSON without a `Sucesso` field, a truncated download.
+# Unlike an INE refusal (`Sucesso.Falso`, thrown as `ArgumentError`), this can be
+# transient, so `_fetch` retries it. Callers never see this type: after the last
+# attempt it becomes an `ArgumentError`.
+struct _MalformedResponse <: Exception
+    msg::String
 end
+
+"""
+    RETRY_DELAYS
+
+The pauses, in seconds, before the second, third and later attempts at an INE
+request. INE resets connections under load, so a failed connection, an HTTP
+429 or 5xx, or a body of the wrong shape is retried after each of these;
+anything else, an INE refusal included, is thrown at once. Set
+`PortugalINE.Indicators.RETRY_DELAYS[] = Float64[]` to make one attempt only.
+"""
+const RETRY_DELAYS = Ref([5.0, 20.0, 60.0])
+
+_retryable(e) = e isa _MalformedResponse ||
+    (e isa Downloads.RequestError &&
+     (e.response.status == 0 || e.response.status == 429 || e.response.status >= 500))
+
+# Write through a temporary file and rename, so an interrupted write cannot
+# leave a truncated response behind to be trusted on the next call.
+function _store(body::AbstractString, url::AbstractString, cache::AbstractString)
+    mkpath(cache)
+    path = _cache_file(url, cache)
+    tmp = path * ".part" * string(getpid())
+    write(tmp, body)
+    mv(tmp, path; force = true)
+    return path
+end
+
+# One fetch, cached, returning `parse(body)`. The body is cached only after
+# `parse` has accepted it. INE reports failure with HTTP 200, so caching first
+# would store an error message or a maintenance page and return it on every
+# later call, retries included. A cached body that no longer parses (written
+# before this check existed) is discarded and fetched again.
+function _fetch(parse, url::AbstractString; cache, timeout::Real)
+    if cache !== nothing
+        path = _cache_file(url, cache)
+        if isfile(path)
+            try
+                return parse(read(path, String))
+            catch e
+                e isa _MalformedResponse || rethrow()
+                rm(path; force = true)
+            end
+        end
+    end
+    delays = RETRY_DELAYS[]
+    attempt = 0
+    while true
+        attempt += 1
+        try
+            body = sprint() do io
+                Downloads.download(url, io; timeout = float(timeout))
+            end
+            result = parse(body)
+            cache === nothing || _store(body, url, cache)
+            return result
+        catch e
+            if !_retryable(e) || attempt > length(delays)
+                e isa _MalformedResponse && throw(ArgumentError(
+                    e.msg * (attempt > 1 ? " ($attempt attempts)" : "")))
+                rethrow()
+            end
+            @warn "INE request failed; retrying in $(delays[attempt]) s" url attempt exception = e
+            sleep(delays[attempt])
+        end
+    end
+end
+
+# The parse step for the two JSON endpoints: unwrap, then check `Sucesso`.
+_json_ok(body, url) = (obj = _unwrap(body, url); _check_success(obj, url); obj)
 
 # Percent-encode a query value. INE codes are alphanumeric in practice; this is
 # here so that a caller passing something else gets a well-formed URL rather
@@ -379,8 +440,8 @@ end
 # INE answers a bad request with HTTP 200 and Sucesso.Falso. Surfacing its own
 # message is more use than anything this package could invent.
 function _check_success(obj, url::AbstractString)
-    suc = get(obj, :Sucesso, nothing)
-    suc === nothing && throw(ArgumentError(
+    suc = obj isa JSON3.Object ? get(obj, :Sucesso, nothing) : nothing
+    suc === nothing && throw(_MalformedResponse(
         "INE's response carried no Sucesso field, so it is not the shape this " *
         "parser knows. URL: $url"))
     haskey(suc, :Verdadeiro) && return nothing
@@ -396,9 +457,15 @@ end
 
 # The single object INE wraps every JSON response in a one-element array around.
 function _unwrap(body::AbstractString, url::AbstractString)
-    parsed = JSON3.read(body)
+    parsed = try
+        JSON3.read(body)
+    catch
+        throw(_MalformedResponse(
+            "INE's response is not JSON. URL: $url\nFirst 200 characters: " *
+            first(strip(body), 200)))
+    end
     if parsed isa JSON3.Array
-        isempty(parsed) && throw(ArgumentError(
+        isempty(parsed) && throw(_MalformedResponse(
             "INE returned an empty array. URL: $url"))
         return first(parsed)
     end
@@ -447,9 +514,7 @@ function indicator_metadata(varcd::AbstractString; language = "EN",
     v = _check_varcd(varcd)
     lang = _check_language(language)
     url = _meta_url(v, lang)
-    obj = _unwrap(_fetch(url; cache, timeout), url)
-    _check_success(obj, url)
-    return _parse_metadata(obj, url)
+    return _fetch(b -> _parse_metadata(_json_ok(b, url), url), url; cache, timeout)
 end
 
 function _parse_metadata(obj, url::AbstractString)
@@ -599,9 +664,7 @@ function indicator_data(varcd::AbstractString; period = nothing,
     end
     url = _data_url(v, lang; period = p, dimensions)
 
-    obj = _unwrap(_fetch(url; cache, timeout), url)
-    _check_success(obj, url)
-    return _parse_data(obj, url)
+    return _fetch(b -> _parse_data(_json_ok(b, url), url), url; cache, timeout)
 end
 
 function _parse_data(obj, url::AbstractString)
@@ -637,13 +700,13 @@ function _parse_data(obj, url::AbstractString)
                 end
                 push!(col, String(x))
             end
-        end
-        # Any extra column absent from this period's rows gets padded here, so
-        # every vector stays the same length as `period_col`.
-        for k in order
-            v = extra[k]
-            while length(v) < length(period_col)
-                push!(v, "")
+            # An extra column absent from this row is padded here, per row, so
+            # every vector stays the same length as `period_col`. Padding once
+            # per period instead let a later row's value land on the row
+            # before it whenever a row in between lacked the key.
+            for k in order
+                v = extra[k]
+                length(v) < length(period_col) && push!(v, "")
             end
         end
     end
@@ -824,7 +887,7 @@ catalogue_entry("0014580").title             # "Per capita purchasing power"
 function catalogue(; language = "EN", cache = ine_cache_dir(), timeout::Real = 300)
     lang = _check_language(language)
     url = _catalogue_url(lang)
-    return _parse_catalogue(_fetch(url; cache, timeout), url)
+    return _fetch(b -> _parse_catalogue_response(b, url), url; cache, timeout)
 end
 
 """
@@ -841,7 +904,7 @@ function catalogue_entry(varcd::AbstractString; language = "EN",
     v = _check_varcd(varcd)
     lang = _check_language(language)
     url = _catalogue_url(lang; varcd = v)
-    es = _parse_catalogue(_fetch(url; cache, timeout), url)
+    es = _fetch(b -> _parse_catalogue_response(b, url), url; cache, timeout)
     length(es) == 1 || throw(ArgumentError(
         "expected one catalogue entry for $v, parsed $(length(es)). URL: $url"))
     return only(es)
@@ -885,6 +948,16 @@ function _parse_catalogue(body::AbstractString, url::AbstractString)
         "the document had a <catalog> element but no <indicator> entries. " *
         "URL: $url"))
     return entries
+end
+
+# The parse step `_fetch` runs on a catalogue response. A document with no
+# <catalog> element (an HTML error page, say) may be transient and is retried;
+# a catalogue document that fails to parse is not.
+function _parse_catalogue_response(body::AbstractString, url::AbstractString)
+    occursin("<catalog", body) || throw(_MalformedResponse(
+        "this is not an INE catalogue document: no <catalog> element. " *
+        "URL: $url\nFirst 200 characters: " * first(strip(body), 200)))
+    return _parse_catalogue(body, url)
 end
 
 function _xml_block(xml::AbstractString, tag::AbstractString)

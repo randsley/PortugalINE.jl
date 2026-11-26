@@ -381,6 +381,75 @@ end
     @test clear_ine_cache!(dir = joinpath(tmp, "never-created")) == 0
 end
 
+@testset "only a body that parses is cached, and bad ones are retried" begin
+    I = PortugalINE.Indicators
+    # file:// URLs stand in for INE: Downloads fetches them through the same
+    # path as https, so retry and caching run for real, with no network.
+    furl(p) = "file:///" * lstrip(replace(p, '\\' => '/'), '/')
+    src = mktempdir()
+    good = joinpath(src, "meta.json"); cp(F_META, good)
+    html = joinpath(src, "maint.html"); write(html, "<html><body>Em manutenção</body></html>")
+    fail = joinpath(src, "fail.json"); cp(F_FAIL, fail)
+    parse_meta(url) = b -> I._parse_metadata(I._json_ok(b, url), url)
+    saved = copy(I.RETRY_DELAYS[])
+    I.RETRY_DELAYS[] = [0.0, 0.0]
+    try
+        # A maintenance page served with 200: tried three times, then an
+        # ArgumentError, and nothing left in the cache to be returned later.
+        c = mktempdir(); u = furl(html)
+        e = @test_logs (:warn, r"retrying") (:warn, r"retrying") begin
+            try; _fetch(parse_meta(u), u; cache = c, timeout = 10); catch e; e; end
+        end
+        @test e isa ArgumentError && occursin("not JSON", e.msg) && occursin("3 attempts", e.msg)
+        @test isempty(readdir(c))
+
+        # An INE refusal is final: thrown at once, no retry, and not cached.
+        c = mktempdir(); u = furl(fail)
+        e = @test_logs begin
+            try; _fetch(parse_meta(u), u; cache = c, timeout = 10); catch e; e; end
+        end
+        @test e isa ArgumentError && occursin("does not exist", e.msg)
+        @test isempty(readdir(c))
+
+        # A connection failure is retried and then rethrown as itself.
+        c = mktempdir(); u = furl(joinpath(src, "absent.json"))
+        e = @test_logs (:warn, r"retrying") (:warn, r"retrying") begin
+            try; _fetch(parse_meta(u), u; cache = c, timeout = 10); catch e; e; end
+        end
+        @test e isa I.Downloads.RequestError
+
+        # A good body is parsed, cached, and then served from the cache.
+        c = mktempdir(); u = furl(good)
+        @test _fetch(parse_meta(u), u; cache = c, timeout = 10).varcd == "0014580"
+        @test length(readdir(c)) == 1
+        rm(good)
+        @test _fetch(parse_meta(u), u; cache = c, timeout = 10).varcd == "0014580"
+
+        # A bad body already in the cache, written before this check existed,
+        # is discarded and fetched again rather than returned for ever.
+        cp(F_META, good)
+        c = mktempdir()
+        I._store("<html>stale</html>", u, c)
+        @test _fetch(parse_meta(u), u; cache = c, timeout = 10).varcd == "0014580"
+        @test read(_cache_file(u, c), String) == read(F_META, String)
+    finally
+        I.RETRY_DELAYS[] = saved
+    end
+end
+
+@testset "an extra dimension stays on its own row when a row lacks it" begin
+    # Row B has no dim_3. Padding once per period used to move C's "H" onto B.
+    body = """{"IndicadorCod":"0000001","Sucesso":{"Verdadeiro":[]},"Dados":{"2022":[
+        {"geocod":"1111601","geodsg":"A","valor":"1","dim_3":"T"},
+        {"geocod":"1111602","geodsg":"B","valor":"2"},
+        {"geocod":"1111603","geodsg":"C","valor":"3","dim_3":"H"}],
+      "2023":[{"geocod":"1111601","geodsg":"A","valor":"4"}]}}"""
+    I = PortugalINE.Indicators
+    d = I._parse_data(I._json_ok(body, "u"), "u")
+    @test d.table.geocod == ["1111601", "1111602", "1111603", "1111601"]
+    @test d.table.dim_3 == ["T", "", "H", ""]
+end
+
 @testset "the citation INE's terms require" begin
     d = indicator_data("0014580"; period = "2023", cache = CACHE)
     c = ine_citation(d)

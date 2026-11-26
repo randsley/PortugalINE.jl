@@ -418,8 +418,10 @@ the GAL file is committed, and nothing at the far end has to parse a polygon or
 reach the network.
 
 `id` is `:code` to label units by DICO, or `:name` by municipality name. DICO is
-the better choice — it is what joins to INE's indicators, and two
-municipalities are called Calheta.
+the better choice — it is what joins to INE's indicators. `:name` is refused
+when any name contains whitespace or repeats, because GAL splits fields on
+whitespace and a repeated id merges two units: on real CAOP it is refused
+(`Vila Franca de Xira`; two municipalities are called Calheta).
 
 The first line is `0 n <name> <idvar>`, as GeoDa writes it, then for each unit a
 line giving its id and neighbour count followed by a line of neighbour ids.
@@ -428,6 +430,19 @@ function write_gal(path::AbstractString, b::MunicipalBoundaries;
                    criterion::Symbol = :queen, id::Symbol = :code)
     id in (:code, :name) || throw(ArgumentError("id must be :code or :name, got $(repr(id))"))
     labels = id === :code ? b.codes : b.names
+    # GAL separates fields by whitespace, so a label containing a space
+    # ("Vila Franca de Xira") splits into several ids, and a repeated label
+    # ("Calheta") makes two units one. Either way the file reads back as a
+    # different graph, so refuse rather than write it.
+    spaced = [l for l in labels if any(isspace, l)]
+    isempty(spaced) || throw(ArgumentError(
+        "cannot write GAL ids that contain whitespace, since GAL splits on it: " *
+        join(repr.(first(spaced, 5)), ", ") * (length(spaced) > 5 ? ", ..." : "") *
+        ". Use `id = :code`."))
+    length(unique(labels)) == length(labels) || throw(ArgumentError(
+        "cannot write GAL ids that repeat: " *
+        join(sort(unique(l for l in labels if count(==(l), labels) > 1)), ", ") *
+        ". Use `id = :code`."))
     nb = neighbour_lists(b; criterion = criterion)
     n = length(nb)
     open(path, "w") do io
