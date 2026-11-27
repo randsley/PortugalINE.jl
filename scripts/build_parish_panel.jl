@@ -90,6 +90,11 @@ function main(args)
 
     files = write_panel(outdir, p; name = "portugal_parishes_panel",
                         coordinate_names = ("x_m", "y_m"))
+    # The same panel as web map layers (TopoJSON, values, links), for
+    # SpatialAtlas.jl. Display geometry only; the GAL file is the weights.
+    web = write_webmap(joinpath(outdir, "web"), p; crs = "EPSG:3763",
+                       name = "portugal_parishes_panel", tolerance = 20)
+    foreach(f -> println("wrote web/", basename(f), "  (", round(filesize(f) / 1e6; digits = 2), " MB)"), web)
 
     # What write_panel cannot know: what the columns mean and why these.
     open(last(files), "a") do io

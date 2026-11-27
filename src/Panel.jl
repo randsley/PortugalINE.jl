@@ -40,6 +40,7 @@ using ..Boundaries: MunicipalBoundaries, contiguity, centroids, write_gal,
 using ..Join: _filter_text, _csv_field, _num
 
 import ..Join: dropped, notes
+import ..Indicators: ine_citation
 
 export PanelDataset, join_panel, panel_matrices, write_panel
 

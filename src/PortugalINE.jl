@@ -26,10 +26,14 @@ using .Join
 include("Panel.jl")
 using .Panel
 
-export Codes, Indicators, Boundaries, Join, Panel
+include("Web.jl")
+using .Web
+
+export Codes, Indicators, Boundaries, Join, Panel, Web
 export MunicipalDataset, join_municipal, spatial_weights, model_matrix,
        write_dataset, dropped, notes
 export PanelDataset, join_panel, panel_matrices, write_panel
+export ptm06_to_wgs84, write_webmap
 export INE_ATTRIBUTION, DimensionCategory, Dimension, Indicator, IndicatorData,
        CatalogueEntry,
        indicator_metadata, indicator_data, catalogue, catalogue_entry,

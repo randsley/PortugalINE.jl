@@ -365,6 +365,31 @@ total `T` at every level, with the lengths of real levels. `ispseudo`
 recognises them, `geolevel` refuses them, and `municipal_values` and
 `parish_values` leave them out.
 
+## Web maps
+
+`write_webmap` writes a panel or a dataset as files a browser map draws
+(MapLibre, deck.gl, D3): TopoJSON in longitude and latitude, the values by
+period and unit, the weights' links with centroids, and provenance.
+[SpatialAtlas.jl](https://github.com/randsley/SpatialAtlas.jl) draws them.
+
+```julia
+write_webmap("web", p; crs = "EPSG:3763")      # CAOP GeoPackages are EPSG:3763
+```
+
+**Simplifying each unit on its own opens slivers between neighbours**, so
+borders are simplified once, as shared arcs. A vertex is a junction when it
+has other than two distinct neighbours across the rings that use it (where
+three units meet, or a border reaches the coast). Between junctions, both
+neighbours visit the same vertices, so each border is one arc. On the 2,882
+parishes at 20 m, the vertices go from 1.66 million to 174,000 (2.2 MB of
+TopoJSON). Decoding with `topojson-client` gives back the exact rook graph,
+all 8,283 links. The geometry is still for display only: weights come from the
+exact vertices.
+
+`crs` must be given, because the boundaries do not record it. EPSG:3763 is
+converted by a pure-Julia inverse transverse Mercator that agrees with PROJ to
+1e-9 degrees, so there is no GDAL.
+
 ## Geography and provenance
 
 One request returns **every level at once** - 347 rows for 308 municipalities,
@@ -524,7 +549,7 @@ on data rather than on a constructed corner.
 
 ```
 Test Summary: | Pass  Total
-PortugalINE   |  641    641
+PortugalINE   |  668    668
 ```
 
 Measured on Julia 1.13.4, 2026-11-26; CI runs 1.10 and the latest release.

@@ -6,6 +6,12 @@ is `0.1.0-DEV`. Dates are those of the commits.
 ## Unreleased
 
 ### Added
+- **Web map layers** (layer 6): `write_webmap` writes TopoJSON in longitude and
+  latitude, with each shared border one arc simplified once (so neighbours
+  stay flush), plus values and the weights' links. `ptm06_to_wgs84` is pure
+  Julia and agrees with PROJ to 1e-9 degrees. On the 2,882 parishes,
+  topojson-client recovers the exact rook graph from the shared arcs. The
+  panel build writes the layer, for SpatialAtlas.jl. (2026-11-27)
 - **Panels** (layer 5): `join_panel`, `panel_matrices` (stacked period by
   period, `W` rebuilt over the units kept) and `write_panel` (long CSV, GAL,
   centroids, provenance). `scripts/build_parish_panel.jl` builds the 2,882
@@ -52,6 +58,8 @@ is `0.1.0-DEV`. Dates are those of the commits.
   (2026-11-26)
 
 ### Fixed
+- `ine_citation(panel)` threw a MethodError: Panel defined a function of its
+  own instead of extending the exported one. (2026-11-27)
 - A failed or malformed response was cached and served again; a body is now
   cached only once it parses. (2026-11-26)
 - Retries live in the library: a reset connection, HTTP 429/5xx, a malformed

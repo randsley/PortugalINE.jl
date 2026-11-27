@@ -25,6 +25,7 @@ makedocs(
         "Boundaries and weights" => "boundaries.md",
         "Joining" => "join.md",
         "Panels" => "panels.md",
+        "Web maps" => "web.md",
     ],
 )
 

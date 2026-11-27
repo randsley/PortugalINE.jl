@@ -1,4 +1,4 @@
-using PortugalINE, Test, SparseArrays, LinearAlgebra
+using PortugalINE, Test, SparseArrays, LinearAlgebra, JSON3
 using PortugalINE.Codes: DISTRICT_NAMES
 
 # The fixture is a real INE response: the geography dimension of indicator
@@ -114,6 +114,10 @@ end
 
 @testset "6. panels" begin
     include("test_panel.jl")
+end
+
+@testset "7. web map layers" begin
+    include("test_web.jl")
 end
 
 end

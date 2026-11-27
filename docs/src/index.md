@@ -22,6 +22,7 @@ PortugalINE
 | 3 | [Boundaries and weights](@ref) | CAOP GeoJSON, queen and rook contiguity, centroids, GAL files |
 | 4 | [Joining](@ref) | indicators to boundaries on DICO or DICOFRE, with provenance |
 | 5 | [Panels](@ref) | the same units over several periods, with one `W` |
+| 6 | [Web maps](@ref) | TopoJSON with shared borders, values and links, for browser maps |
 
 ## Licences
 

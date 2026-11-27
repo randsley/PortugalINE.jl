@@ -42,6 +42,8 @@ BIR = [bir("2018"), bir("2019")]
 
 @testset "the units present everywhere, by period" begin
     p = join_panel(PB, :income => INC, :births => BIR; periods = ["2018", "2019"])
+    # The exported ine_citation, not a function of Panel's own (it was, once).
+    @test occursin("0012748", ine_citation(p)) && which(ine_citation, (typeof(p),)).module === PortugalINE.Panel
     @test p.keys == K
     @test p.periods == ["2018", "2019"]
     @test size(p.columns.income) == (10, 2) && size(p.columns.births) == (10, 2)
