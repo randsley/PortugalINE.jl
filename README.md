@@ -500,6 +500,10 @@ pass by silently fetching the real thing. A live suite is gated behind
 network failure cannot turn a code change red, and INE's dropped connections
 are retried in the library.
 
+What INE's API does that a client must know is collected in the manual's page
+[INE's API: verified behaviour](https://randsley.github.io/PortugalINE.jl/dev/ine_api/),
+the one list shared with [pyptine](https://github.com/randsley/pyptine), the Python client.
+
 **API drift** is checked weekly by `tools/check_api.jl` (workflow
 `api-check.yml`). INE publishes no spec, so it reads live responses raw and
 checks that every field the parsers read is present with the expected type,

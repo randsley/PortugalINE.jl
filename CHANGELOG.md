@@ -6,6 +6,10 @@ is `0.1.0-DEV`. Dates are those of the commits.
 ## Unreleased
 
 ### Added
+- **INE's API: verified behaviour**, a manual page (`docs/src/ine_api.md`): the one
+  list of what INE's API does that a client must know (refusals as HTTP 200,
+  period labels and codes, throttling 404s, geographic levels and districts,
+  catalogue quirks), shared with pyptine, the Python client. (2026-11-27)
 - **Web map layers** (layer 6): `write_webmap` writes TopoJSON in longitude and
   latitude, with each shared border one arc simplified once (so neighbours
   stay flush), plus values and the weights' links. `ptm06_to_wgs84` is pure

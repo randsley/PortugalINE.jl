@@ -26,6 +26,7 @@ makedocs(
         "Joining" => "join.md",
         "Panels" => "panels.md",
         "Web maps" => "web.md",
+        "INE's API: verified behaviour" => "ine_api.md",
     ],
 )
 
