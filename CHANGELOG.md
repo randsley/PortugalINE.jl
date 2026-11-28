@@ -62,6 +62,11 @@ is `0.1.0-DEV`. Dates are those of the commits.
   (2026-11-26)
 
 ### Fixed
+- `_WEBMAP.md` printed DGT's credit twice: `write_webmap` appended it to a
+  citation that already ends with it. (2026-11-28)
+- `ine_citation` refuses, naming the column or indicator, when an extract has
+  no extraction date. Before, the panel's citation silently left the date out
+  and the others printed "extracted ." (2026-11-28)
 - `ine_citation(panel)` threw a MethodError: Panel defined a function of its
   own instead of extending the exported one. (2026-11-27)
 - A failed or malformed response was cached and served again; a body is now

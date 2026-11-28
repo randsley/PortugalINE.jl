@@ -960,6 +960,9 @@ function ine_citation(ds::IndicatorData...)
     isempty(ds) && throw(ArgumentError("nothing to cite."))
     codes = sort(unique(d.varcd for d in ds))
     pers = sort(unique(p for d in ds for p in d.periods))
+    gone = [d.varcd for d in ds if isempty(d.extracted)]
+    isempty(gone) || throw(ArgumentError("cannot cite indicator(s) $(join(unique(gone), ", ")): " *
+        "no extraction date recorded, and INE's citation needs one."))
     date = first(sort([d.extracted for d in ds]))
     return string("Source: Statistics Portugal (INE), indicator",
                   length(codes) == 1 ? " " : "s ", join(codes, ", "),

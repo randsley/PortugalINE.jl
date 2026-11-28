@@ -84,5 +84,6 @@ end
     @test length(l.centroids) == 10 && -9.3 < l.centroids[1][1] < -9.1
     md = read(files[4], String)
     @test occursin(CAOP_ATTRIBUTION, md) && occursin("Do not compute weights", md)
+    @test count(CAOP_ATTRIBUTION, md) == 1   # once: ine_citation already carries it
     @test occursin(PB.sha256, md)
 end

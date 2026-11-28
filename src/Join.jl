@@ -530,6 +530,9 @@ function ine_citation(ds::MunicipalDataset)
     # Deduplicated for display: `varcds` and `periods` are per column, so two
     # columns drawn from one indicator must not cite it twice.
     vs = sort(unique(ds.varcds)); ps = sort(unique(ds.periods))
+    gone = [String(k) for (k, ex) in zip(keys(ds.columns), ds.column_extracted) if isempty(ex)]
+    isempty(gone) || throw(ArgumentError("cannot cite the dataset: " *
+        "no extraction date recorded for column(s) $(join(gone, ", ")), and INE's citation needs one."))
     return string("Source: Statistics Portugal (INE), indicator",
                   length(vs) == 1 ? " " : "s ", join(vs, ", "),
                   ", reference period", length(ps) == 1 ? " " : "s ",

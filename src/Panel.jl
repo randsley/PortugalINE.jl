@@ -359,11 +359,14 @@ credit for the boundaries.
 """
 function ine_citation(p::PanelDataset)
     vs = sort(unique(p.varcds))
+    gone = [String(k) for (k, ex) in zip(keys(p.columns), p.column_extracted) if isempty(ex)]
+    isempty(gone) || throw(ArgumentError("cannot cite the panel: no extraction date " *
+        "recorded for column(s) $(join(gone, ", ")), and INE's citation needs one."))
     ex = minimum(p.column_extracted)
     return string("Source: Statistics Portugal (INE), indicator",
                   length(vs) == 1 ? " " : "s ", join(vs, ", "),
                   ", reference periods ", first(p.periods), " to ", last(p.periods),
-                  isempty(ex) ? "" : ", extracted " * first(ex, 10), ". ", CAOP_ATTRIBUTION)
+                  ", extracted ", first(ex, 10), ". ", CAOP_ATTRIBUTION)
 end
 
 _today() = Base.Libc.strftime("%Y-%m-%d", time())

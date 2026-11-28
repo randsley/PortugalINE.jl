@@ -266,6 +266,13 @@ end
     @test count(iszero, vec(sum(m.W; dims = 2))) == 1
 end
 
+@testset "a dataset with an undated column is not cited" begin
+    nodate = IndicatorData(pp_data.varcd, pp_data.name, pp_data.periods, pp_data.last_update,
+                           "", pp_data.table, pp_data.language, pp_data.dimensions, pp_data.url)
+    ds = join_municipal(lisboa6, :pp => nodate)
+    @test_throws r"pp.*INE's citation needs one" ine_citation(ds)
+end
+
 @testset "bad joins are refused with the reason" begin
     @test_throws ArgumentError join_municipal(lisboa6)
     @test_throws ArgumentError join_municipal(lisboa6, :a => pp_data,

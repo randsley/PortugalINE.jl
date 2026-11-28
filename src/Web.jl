@@ -399,7 +399,8 @@ function _write(dir, name, b, A, criterion, values, crs, tol, citation)
     open(f, "w") do io
         println(io, "# $name: web map layers")
         println(io)
-        println(io, "> ", citation, " ", CAOP_ATTRIBUTION)
+        # `citation` (ine_citation) already ends with DGT's credit.
+        println(io, "> ", citation)
         println(io)
         println(io, "Both credits are conditions of reuse: show them on any map drawn from these files.")
         println(io)

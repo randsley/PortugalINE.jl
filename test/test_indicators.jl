@@ -575,6 +575,9 @@ end
     @test occursin("indicators 0008074, 0014580", c2)   # sorted, pluralised
     @test occursin("reference periods 2022, 2023", c2)
     @test_throws ArgumentError ine_citation()
+    # No extraction date: refused, naming the indicator, not cited as "extracted ."
+    nodate = PortugalINE.IndicatorData(d.varcd, d.name, d.periods, d.last_update, "", d.table, d.language, d.dimensions, d.url)
+    @test_throws r"0014580.*no extraction date" ine_citation(d3, nodate)
     @test occursin("Statistics Portugal (INE)", INE_ATTRIBUTION)
 end
 

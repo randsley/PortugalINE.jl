@@ -44,6 +44,11 @@ BIR = [bir("2018"), bir("2019")]
     p = join_panel(PB, :income => INC, :births => BIR; periods = ["2018", "2019"])
     # The exported ine_citation, not a function of Panel's own (it was, once).
     @test occursin("0012748", ine_citation(p)) && which(ine_citation, (typeof(p),)).module === PortugalINE.Panel
+    # A column with no extraction date: the citation is refused, naming it,
+    # not printed without the date.
+    pu = join_panel(PB, :income => INC, :births => [bir("2018"), extract("0008234", [("2019", k, 1.0) for k in K];
+                    dims = Dict(3 => "T"), extracted = "")]; periods = ["2018", "2019"])
+    @test_throws r"births.*INE's citation needs one" ine_citation(pu)
     @test p.keys == K
     @test p.periods == ["2018", "2019"]
     @test size(p.columns.income) == (10, 2) && size(p.columns.births) == (10, 2)
